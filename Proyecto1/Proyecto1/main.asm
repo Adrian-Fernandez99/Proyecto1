@@ -8,23 +8,21 @@ Author : Adrián Fernández
 Descripción:
 	
 */
-
 .include "M328PDEF.inc"		// Include definitions specific to ATMega328P
 
 // Definiciones de registro, constantes y variables
 .cseg
-
 .org		0x0000			// Se dirigen el inicio
 	JMP		START
 
 .org		PCI0addr		// Se dirigen las interrupciones del pinchange
 	JMP		BOTONES
 
-.org		OVF1addr		// Se dirigen las interrupciones del timer
+.org		OVF1addr		// Se dirigen las interrupciones del timer1
 	JMP		OVER_TIMER1
 
-.org		OVF0addr		// Se dirigen las interrupciones del timer
-	JMP		OVER_TIMER0
+.org		OVF0addr		// Se dirigen las interrupciones del timer0
+	JMP		OVERFLOW
 
 TABLA7SEG: .DB	0x7E, 0x30, 0x6D, 0x79, 0x33, 0x5B, 0x5F, 0x70, 0x7F, 0x7B, 0x77, 0x4F, 0x4E, 0x6D, 0x4F, 0x47
 //				0,    1,    2,    3,    4,    5,    6,    7,    8,    9,    A,    B,    C,    D,    E,    F
@@ -52,7 +50,6 @@ SETUP:
 	STS		CLKPR, R16		// Configurar Prescaler a 16 F_cpu = 1MHz
 
 	// Inicializar timer0
-	CALL	INIT_TMR0
 	CALL	INIT_TMR1
 
 	// Deshabilitar serial (esto apaga los demas LEDs del Arduino)
@@ -68,15 +65,11 @@ SETUP:
 	STS		PCICR, R16
 
 	// Interrupciones del timer
-	// Habilitamos interrupcionees para el timer
-	LDI		R16, (1 << TOIE0)
-	STS		TIMSK0, R16
 
 	// Interrupciones del timer
 	// Habilitamos interrupcionees para el timer
 	LDI		R16, (1 << TOIE1)
 	STS		TIMSK1, R16
-
 
 	// PORTD como entrada con pull-up habilitado
 	LDI		R16, 0x00
@@ -93,7 +86,15 @@ SETUP:
 	OUT		DDRD, R16		// Setear puerto D como salida
 
 	// Realizar variables
-	
+	LDI		R16, 0x00		// Registro del contador
+	LDI		R17, 0x00		// Registro de lectura de botones
+	LDI		R18, 0x00		// Registro para el display
+	LDI		R19, 0x00		// Registro de overflows de timer0
+	LDI		R20, 0x00		// Registro del timer
+	LDI		R21, 0x00		// Timer interrupcion
+	LDI		R22, 0x00		// Registro para el segundo contador
+	LDI		R23, 0x00		// Registro para el segundo display
+	LDI		R24, 0x00		// Registro para decidir que display mostrar
 
 	// Activamos las interrupciones
 	SEI
@@ -101,6 +102,10 @@ SETUP:
 // Main loop
 MAIN_LOOP:
 	SEI
+
+	OUT		PORTD, R23		// Sale la señal del contador 1
+	
+	OUT		PORTD, R18		// Sale la señal del contador 2
 	
 	CPI		R19, 2		// Se esperan 200 overflows para hacer un segundo
 	BRNE	MAIN_LOOP		
@@ -110,20 +115,13 @@ MAIN_LOOP:
 	JMP		MAIN_LOOP
 
 // NON-Interrupt subroutines
-INIT_TMR0:
-	LDI		R16, (1 << CS00) | (1 << CS01) | (0 << CS02)
-	OUT		TCCR0B, R16		// Setear prescaler del TIMER 0 a 64
-	LDI		R16, MAX_VAL_0
-	OUT		TCNT0, R16		// Cargar valor inicial en TCNT0
-	RET
-
 INIT_TMR1:
 	LDI		R16, (0 << CS10) | (1 << CS11) | (0 << CS12)
-	OUT		TCCR1B, R16		// Setear prescaler del TIMER 0 a 64
+	STS		TCCR1B, R16		// Setear prescaler del TIMER 0 a 64
 	LDI		R16, HIGH(MAX_VAL_1)
-	OUT		TCNT1H, R16		// Cargar valor inicial en TCNT1
+	STS		TCNT1H, R16		// Cargar valor inicial en TCNT1
 	LDI		R16, LOW(MAX_VAL_1)
-	OUT		TCNT1L, R16		// Cargar valor inicial en TCNT1
+	STS		TCNT1L, R16		// Cargar valor inicial en TCNT1
 	RET
 
 SUMA:						// Función para el incremento del primer contador
@@ -182,23 +180,6 @@ BOTONES:
     POP		R18				// Se trae el registro anterior de R18	
 
 	RETI					// Regreso de la interrupción
-	
-OVER_TIMER0:
-	CLI
-
-	PUSH	R17				// Se guarda el registro actual de R18
-    IN		R17, SREG		// Se ingresa el registro del SREG a R18
-    PUSH	R17				// Se guarda el registro del SREG
-
-	LDI		R17, 178
-	OUT		TCNT0, R17		// Cargar valor inicial en TCNT0
-	// Se incrementa el tiempo del timer
-
-	POP		R17				// Se trae el registro del SREG
-    OUT		SREG, R17		// Se ingresa el registro del SREG a R18
-    POP		R17				// Se trae el registro anterior de R18	
-
-	RETI
 
 OVER_TIMER1:
 	CLI
@@ -207,8 +188,10 @@ OVER_TIMER1:
     IN		R17, SREG		// Se ingresa el registro del SREG a R18
     PUSH	R17				// Se guarda el registro del SREG
 
-	LDI		R17, 3036
-	OUT		TCNT0, R17		// Cargar valor inicial en TCNT0
+	LDI		R17, HIGH(MAX_VAL_1)
+	STS		TCNT1H, R17		// Cargar valor inicial en TCNT1
+	LDI		R17, LOW(MAX_VAL_1)
+	STS		TCNT1L, R17		// Cargar valor inicial en TCNT1
 	INC		R19				// Se incrementa el tiempo del timer
 
 	POP		R17				// Se trae el registro del SREG
