@@ -22,7 +22,7 @@ Descripción:
 	JMP		OVER_TIMER1
 
 .org		OVF0addr		// Se dirigen las interrupciones del timer0
-	JMP		OVERFLOW
+	JMP		OVER_TIMER0
 
 TABLA7SEG: .DB	0x7E, 0x30, 0x6D, 0x79, 0x33, 0x5B, 0x5F, 0x70, 0x7F, 0x7B, 0x77, 0x4F, 0x4E, 0x6D, 0x4F, 0x47
 //				0,    1,    2,    3,    4,    5,    6,    7,    8,    9,    A,    B,    C,    D,    E,    F
@@ -49,12 +49,9 @@ SETUP:
 	LDI		R16, 0x04
 	STS		CLKPR, R16		// Configurar Prescaler a 16 F_cpu = 1MHz
 
-	// Inicializar timer0
+	// Inicializar timers
 	CALL	INIT_TMR1
-
-	// Deshabilitar serial (esto apaga los demas LEDs del Arduino)
-	LDI		R16, 0x00
-	STS		UCSR0B, R16
+	CALL	INIT_TMR0
 
 	// Interrupciones de botones
 	// Habilitamos interrupcionees para el PCIE0
@@ -64,10 +61,12 @@ SETUP:
 	LDI		R16, (1 << PCIE0)
 	STS		PCICR, R16
 
-	// Interrupciones del timer
+	// Interrupciones de los timer
+	// Habilitamos interrupcionees para el timer0
+	LDI		R16, (1 << TOIE0)
+	STS		TIMSK0, R16
 
-	// Interrupciones del timer
-	// Habilitamos interrupcionees para el timer
+	// Habilitamos interrupcionees para el timer1
 	LDI		R16, (1 << TOIE1)
 	STS		TIMSK1, R16
 
@@ -104,7 +103,6 @@ MAIN_LOOP:
 	SEI
 
 	OUT		PORTD, R23		// Sale la señal del contador 1
-	
 	OUT		PORTD, R18		// Sale la señal del contador 2
 	
 	CPI		R19, 2		// Se esperan 200 overflows para hacer un segundo
@@ -122,6 +120,13 @@ INIT_TMR1:
 	STS		TCNT1H, R16		// Cargar valor inicial en TCNT1
 	LDI		R16, LOW(MAX_VAL_1)
 	STS		TCNT1L, R16		// Cargar valor inicial en TCNT1
+	RET
+
+INIT_TMR0:
+	LDI		R16, (1 << CS00) | (1 << CS01) | (0 << CS02)
+	OUT		TCCR0B, R16		// Setear prescaler del TIMER 0 a 64
+	LDI		R16, 178
+	OUT		TCNT0, R16		// Cargar valor inicial en TCNT0
 	RET
 
 SUMA:						// Función para el incremento del primer contador
@@ -182,6 +187,25 @@ BOTONES:
 	RETI					// Regreso de la interrupción
 
 OVER_TIMER1:
+	CLI
+
+	PUSH	R17				// Se guarda el registro actual de R18
+    IN		R17, SREG		// Se ingresa el registro del SREG a R18
+    PUSH	R17				// Se guarda el registro del SREG
+
+	LDI		R17, HIGH(MAX_VAL_1)
+	STS		TCNT1H, R17		// Cargar valor inicial en TCNT1
+	LDI		R17, LOW(MAX_VAL_1)
+	STS		TCNT1L, R17		// Cargar valor inicial en TCNT1
+	INC		R19				// Se incrementa el tiempo del timer
+
+	POP		R17				// Se trae el registro del SREG
+    OUT		SREG, R17		// Se ingresa el registro del SREG a R18
+    POP		R17				// Se trae el registro anterior de R18	
+
+	RETI
+
+OVER_TIMER0:
 	CLI
 
 	PUSH	R17				// Se guarda el registro actual de R18
