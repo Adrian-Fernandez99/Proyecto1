@@ -111,10 +111,10 @@ SETUP:
 
 	// Realizar variables
 	LDI		R16, 0x00		// Multiple uso
-	LDI		R17, 0x00		// Lectura de botones
-	LDI		R18, 0x00		// Incrementos del timer
-	LDI		R19, 0x00		// Overflow timer1
-	LDI		R20, 0x00		// Registro para display
+	LDI		R17, 0x00		// Comparaciones
+	LDI		R18, 0x00		// Lectura de botones
+	LDI		R19, 0x00		// Incrementos del timer
+	LDI		R20, 0x00		// Overflow timer1
 	LDI		R21, 0x00		// Contador timer0
 	LDI		R22, 0x00		// 
 	LDI		R23, 0x00		// 
@@ -146,7 +146,7 @@ MAIN_LOOP:
 	BRNE	MAIN_LOOP		
 
 	CLR		R19				// Se limpia el registro de R19
-	CALL	SUMA			// Se llama el incremento del dislpay
+	CALL	SUMA_MINS_1		// Se llama el incremento del dislpay
 	JMP		MAIN_LOOP
 
 // NON-Interrupt subroutines
@@ -166,59 +166,133 @@ INIT_TMR0:
 	OUT		TCNT0, R16		// Cargar valor inicial en TCNT0
 	RET
 
-SUMA_MINS_1:					// Función para el incremento del minutos
-	LDS		R16, UNI_MIN
+SUMA_MINS_1:				// Función para el incremento del minutos
+	LDS		R16, UNI_MIN	// Se trae el valor de la RAM
 	INC		R16				// Se incrementa el valor
-	CPI		R20, 10
+	CPI		R16, 10
 	BRNE	SM1_JMP			// Se observa si tiene más de 4 bits
-	LDI		R20, 0x00		// En caso de overflow y debe regresar a 0
-	STS		UNI_MIN, R16
-	CALL	SUMA_MINS_2
+	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
+	STS		UNI_MIN, R16	// Se sube valor a la RAM
+	CALL	SUMA_MINS_2		// En caso de overflow incrementar siguiente unidad
 	SM1_JMP:
-	STS		UNI_MIN, R16
+	STS		UNI_MIN, R16	// Se sube valor a la RAM
 	CALL	OVER			// Se resetea el puntero
 	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
 	LPM		D_UNI_MIN, Z	// Subir valor del puntero a registro
 	RET
 
 SUMA_MINS_2:
-	LDS		R16, DEC_MIN
+	LDS		R16, DEC_MIN	// Se trae el valor de la RAM
 	INC		R16				// Se incrementa el valor
 	CPI		R16, 6
 	BRNE	SM2_JMP			// Se observa si tiene más de 4 bits
 	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
-	CALL	SUMA_MINS_2
+	STS		UNI_MIN, R16	// Se sube valor a la RAM
+	CALL	SUMA_MINS_2		// En caso de overflow incrementar siguiente unidad
 	SM2_JMP:
-	STS		DEC_MIN, R16
+	STS		DEC_MIN, R16	// Se sube valor a la RAM
 	CALL	OVER			// Se resetea el puntero
 	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
 	LPM		D_DEC_MIN, Z	// Subir valor del puntero a registro
 	RET
 
 SUMA_HRS_1:
-	LDS		R16, UNI_HORA
+	LDS		R16, UNI_HORA	// Se trae el valor de la RAM
+	LDS		R17, DEC_HORA	// Se trae el valor de la RAM
 	INC		R16				// Se incrementa el valor
+	CPI		R17, 2			// Se observa en que decada esta la hora
+	BRNE	NO_NOCHE
+	CPI		R16, 5
+	BRNE	SH1_JMP			// Se observa si tiene más de 4 bits
+	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
+	STS		UNI_HORA, R16	// Se sube valor a la RAM
+	CALL	SUMA_HRS_2		// En caso de overflow incrementar siguiente unidad
+	JMP		SH1_JMP
+	NO_NOCHE:
 	CPI		R16, 10
 	BRNE	SH1_JMP			// Se observa si tiene más de 4 bits
-	LDI		R22, 0x00		// En caso de overflow y debe regresar a 0
+	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
+	STS		UNI_HORA, R16	// Se sube valor a la RAM
+	CALL	SUMA_HRS_2		// En caso de overflow incrementar siguiente unidad
 	SH1_JMP:
-	STS		UNI_HORA, R16
+	STS		UNI_HORA, R16	// Se sube valor a la RAM
 	CALL	OVER			// Se resetea el puntero
 	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
 	LPM		D_UNI_HORA, Z	// Subir valor del puntero a registro
 	RET
 
 SUMA_HRS_2:
-	LDS		R16, DEC_HORA
+	LDS		R16, DEC_HORA	// Se trae el valor de la RAM
 	INC		R16				// Se incrementa el valor
-	CPI		R16, 6
+	CPI		R16, 3
 	BRNE	SH2_JMP			// Se observa si tiene más de 4 bits
-	LDI		R22, 0x00		// En caso de overflow y debe regresar a 0
+	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
+	STS		DEC_HORA, R16	// Se sube valor a la RAM
+	CALL	SUMA_DIA_1		// En caso de overflow incrementar siguiente unidad
 	SH2_JMP:
-	STS		DEC_MIN, R16
+	STS		DEC_HORA, R16	// Se sube valor a la RAM
 	CALL	OVER			// Se resetea el puntero
 	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
-	LPM		D_DEC_MIN, Z	// Subir valor del puntero a registro
+	LPM		D_DEC_HORA, Z	// Subir valor del puntero a registro
+	RET
+
+SUMA_DIA_1:
+	LDS		R16, UNI_DIA	// Se trae el valor de la RAM
+	INC		R16				// Se incrementa el valor
+	CPI		R16, 3
+	BRNE	SD1_JMP			// Se observa si tiene más de 4 bits
+	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
+	STS		UNI_DIA, R16	// Se sube valor a la RAM
+	CALL	SUMA_DIA_2		// En caso de overflow incrementar siguiente unidad
+	SD1_JMP:
+	STS		UNI_DIA, R16	// Se sube valor a la RAM
+	CALL	OVER			// Se resetea el puntero
+	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
+	LPM		D_UNI_DIA, Z	// Subir valor del puntero a registro
+	RET
+
+SUMA_DIA_2:
+	LDS		R16, DEC_DIA	// Se trae el valor de la RAM
+	INC		R16				// Se incrementa el valor
+	CPI		R16, 3
+	BRNE	SD2_JMP			// Se observa si tiene más de 4 bits
+	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
+	STS		DEC_DIA, R16	// Se sube valor a la RAM
+	CALL	SUMA_MES_1		// En caso de overflow incrementar siguiente unidad
+	SD2_JMP:
+	STS		DEC_DIA, R16	// Se sube valor a la RAM
+	CALL	OVER			// Se resetea el puntero
+	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
+	LPM		D_DEC_DIA, Z	// Subir valor del puntero a registro
+	RET
+
+SUMA_MES_1:
+	LDS		R16, UNI_MES	// Se trae el valor de la RAM
+	INC		R16				// Se incrementa el valor
+	CPI		R16, 3
+	BRNE	SME1_JMP			// Se observa si tiene más de 4 bits
+	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
+	STS		UNI_MES, R16	// Se sube valor a la RAM
+	CALL	SUMA_MES_2		// En caso de overflow incrementar siguiente unidad
+	SME1_JMP:
+	STS		UNI_MES, R16	// Se sube valor a la RAM
+	CALL	OVER			// Se resetea el puntero
+	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
+	LPM		D_UNI_MES, Z	// Subir valor del puntero a registro
+	RET
+
+SUMA_MES_2:
+	LDS		R16, DEC_MES	// Se trae el valor de la RAM
+	INC		R16				// Se incrementa el valor
+	CPI		R16, 3
+	BRNE	SME2_JMP			// Se observa si tiene más de 4 bits
+	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
+	STS		DEC_MES, R16	// Se sube valor a la RAM
+	SME2_JMP:
+	STS		DEC_MES, R16	// Se sube valor a la RAM
+	CALL	OVER			// Se resetea el puntero
+	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
+	LPM		D_DEC_MES, Z	// Subir valor del puntero a registro
 	RET
 
 OVER:
