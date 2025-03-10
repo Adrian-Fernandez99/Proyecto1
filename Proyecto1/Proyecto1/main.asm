@@ -11,6 +11,34 @@ Descripción:
 .include "M328PDEF.inc"		// Include definitions specific to ATMega328P
 
 // Definiciones de registro, constantes y variables
+
+.equ		MAX_VAL_0 = 178
+.equ		MAX_VAL_1 = 3036
+
+.def		D_UNI_MIN  = R2
+.def		D_DEC_MIN  = R3
+.def		D_UNI_HORA = R4
+.def		D_DEC_HORA = R5
+.def		D_UNI_DIA  = R6
+.def		D_DEC_DIA  = R7
+.def		D_UNI_MES  = R8
+.def		D_DEC_MES  = R9
+.def		D_UNI_ALRM = R10
+.def		D_DEC_ALRM = R11
+
+.dseg
+.org		SRAM_START
+UNI_MIN:	.byte	1
+DEC_MIN:	.byte	1
+UNI_HORA:	.byte	1
+DEC_HORA:	.byte	1
+UNI_DIA:	.byte	1
+DEC_DIA:	.byte	1
+UNI_MES:	.byte	1
+DEC_MES:	.byte	1
+UNI_ALRM:	.byte	1
+DEC_ALRM:	.byte	1
+
 .cseg
 .org		0x0000			// Se dirigen el inicio
 	JMP		START
@@ -26,9 +54,6 @@ Descripción:
 
 TABLA7SEG: .DB	0x7E, 0x30, 0x6D, 0x79, 0x33, 0x5B, 0x5F, 0x70, 0x7F, 0x7B, 0x77, 0x4F, 0x4E, 0x6D, 0x4F, 0x47
 //				0,    1,    2,    3,    4,    5,    6,    7,    8,    9,    A,    B,    C,    D,    E,    F
-
-.equ		MAX_VAL_0 = 178
-.equ		MAX_VAL_1 = 3036
 
 // Configuración de la pila
 START:
@@ -70,10 +95,10 @@ SETUP:
 	LDI		R16, (1 << TOIE1)
 	STS		TIMSK1, R16
 
-	// PORTD como entrada con pull-up habilitado
-	LDI		R16, 0x00
+	// PORTB como entrada con pull-up habilitado
+	LDI		R16, 0x30	
 	OUT		DDRB, R16		// Setear puerto B como entrada
-	LDI		R16, 0xFF
+	LDI		R16, 0x0F
 	OUT		PORTB, R16		// Habilitar pull-ups en puerto B
 
 	// Configurar puerto C como una salida
@@ -85,15 +110,27 @@ SETUP:
 	OUT		DDRD, R16		// Setear puerto D como salida
 
 	// Realizar variables
-	LDI		R16, 0x00		// Registro del contador
-	LDI		R17, 0x00		// Registro de lectura de botones
-	LDI		R18, 0x00		// Registro para el display
-	LDI		R19, 0x00		// Registro de overflows de timer0
-	LDI		R20, 0x00		// Registro del timer
-	LDI		R21, 0x00		// Timer interrupcion
-	LDI		R22, 0x00		// Registro para el segundo contador
-	LDI		R23, 0x00		// Registro para el segundo display
-	LDI		R24, 0x00		// Registro para decidir que display mostrar
+	LDI		R16, 0x00		// Multiple uso
+	LDI		R17, 0x00		// Lectura de botones
+	LDI		R18, 0x00		// Incrementos del timer
+	LDI		R19, 0x00		// Overflow timer1
+	LDI		R20, 0x00		// Registro para display
+	LDI		R21, 0x00		// Contador timer0
+	LDI		R22, 0x00		// 
+	LDI		R23, 0x00		// 
+	LDI		R24, 0x00		// 
+
+	LPM		D_UNI_MIN, Z
+	LPM		D_DEC_MIN, Z
+	LPM		D_UNI_HORA, Z
+	LPM		D_DEC_HORA, Z
+	LPM		D_UNI_DIA, Z
+	LPM		D_DEC_DIA, Z
+	LPM		D_UNI_MES, Z
+	LPM		D_DEC_MES, Z
+	LPM		D_UNI_ALRM, Z
+	LPM		D_DEC_ALRM, Z
+
 
 	// Activamos las interrupciones
 	SEI
@@ -129,27 +166,59 @@ INIT_TMR0:
 	OUT		TCNT0, R16		// Cargar valor inicial en TCNT0
 	RET
 
-SUMA:						// Función para el incremento del primer contador
-	INC		R20				// Se incrementa el valor
+SUMA_MINS_1:					// Función para el incremento del minutos
+	LDS		R16, UNI_MIN
+	INC		R16				// Se incrementa el valor
 	CPI		R20, 10
-	BRNE	SALTITO			// Se observa si tiene más de 4 bits
+	BRNE	SM1_JMP			// Se observa si tiene más de 4 bits
 	LDI		R20, 0x00		// En caso de overflow y debe regresar a 0
-	CALL	SUMA2
-	SALTITO:
+	STS		UNI_MIN, R16
+	CALL	SUMA_MINS_2
+	SM1_JMP:
+	STS		UNI_MIN, R16
 	CALL	OVER			// Se resetea el puntero
-	ADD		ZL, R20			// Se ingresa el registro del contador al puntero
-	LPM		R18, Z			// Subir valor del puntero a registro
+	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
+	LPM		D_UNI_MIN, Z	// Subir valor del puntero a registro
 	RET
 
-SUMA2:
-	INC		R22				// Se incrementa el valor
-	CPI		R22, 6
-	BRNE	SALTITO2		// Se observa si tiene más de 4 bits
-	LDI		R22, 0x00		// En caso de overflow y debe regresar a 0
-	SALTITO2:
+SUMA_MINS_2:
+	LDS		R16, DEC_MIN
+	INC		R16				// Se incrementa el valor
+	CPI		R16, 6
+	BRNE	SM2_JMP			// Se observa si tiene más de 4 bits
+	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
+	CALL	SUMA_MINS_2
+	SM2_JMP:
+	STS		DEC_MIN, R16
 	CALL	OVER			// Se resetea el puntero
-	ADD		ZL, R22			// Se ingresa el registro del contador al puntero
-	LPM		R23, Z			// Subir valor del puntero a registro
+	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
+	LPM		D_DEC_MIN, Z	// Subir valor del puntero a registro
+	RET
+
+SUMA_HRS_1:
+	LDS		R16, UNI_HORA
+	INC		R16				// Se incrementa el valor
+	CPI		R16, 10
+	BRNE	SH1_JMP			// Se observa si tiene más de 4 bits
+	LDI		R22, 0x00		// En caso de overflow y debe regresar a 0
+	SH1_JMP:
+	STS		UNI_HORA, R16
+	CALL	OVER			// Se resetea el puntero
+	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
+	LPM		D_UNI_HORA, Z	// Subir valor del puntero a registro
+	RET
+
+SUMA_HRS_2:
+	LDS		R16, DEC_HORA
+	INC		R16				// Se incrementa el valor
+	CPI		R16, 6
+	BRNE	SH2_JMP			// Se observa si tiene más de 4 bits
+	LDI		R22, 0x00		// En caso de overflow y debe regresar a 0
+	SH2_JMP:
+	STS		DEC_MIN, R16
+	CALL	OVER			// Se resetea el puntero
+	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
+	LPM		D_DEC_MIN, Z	// Subir valor del puntero a registro
 	RET
 
 OVER:
