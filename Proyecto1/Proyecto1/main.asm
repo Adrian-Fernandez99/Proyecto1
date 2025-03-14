@@ -122,6 +122,20 @@ SETUP:
 	LDI		R23, 0x00		// 
 	LDI		R24, 0x00		// 
 
+	LDI     R16, 0x00
+	STS     UNI_MIN, R16
+	STS     DEC_MIN, R16
+	STS     UNI_HORA, R16
+	STS     DEC_HORA, R16
+	STS     UNI_DIA, R16
+	STS     DEC_DIA, R16
+	STS     UNI_MES, R16
+	STS     DEC_MES, R16
+	STS     UNI_ALRM, R16
+	STS     DEC_ALRM, R16
+
+	CALL	OVER
+
 	LPM		D_UNI_MIN, Z
 	LPM		D_DEC_MIN, Z
 	LPM		D_UNI_HORA, Z
@@ -201,6 +215,7 @@ SUMA_MINS_1:				// Función para el incremento del minutos
 	STS		UNI_MIN, R16	// Se sube valor a la RAM
 	CALL	OVER			// Se resetea el puntero
 	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
+	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
 	LPM		D_UNI_MIN, Z	// Subir valor del puntero a registro
 	RET
 
@@ -216,6 +231,7 @@ SUMA_MINS_2:
 	STS		DEC_MIN, R16	// Se sube valor a la RAM
 	CALL	OVER			// Se resetea el puntero
 	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
+	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
 	LPM		D_DEC_MIN, Z	// Subir valor del puntero a registro
 	RET
 
@@ -241,6 +257,7 @@ SUMA_HRS_1:
 	STS		UNI_HORA, R16	// Se sube valor a la RAM
 	CALL	OVER			// Se resetea el puntero
 	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
+	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
 	LPM		D_UNI_HORA, Z	// Subir valor del puntero a registro
 	RET
 
@@ -256,6 +273,7 @@ SUMA_HRS_2:
 	STS		DEC_HORA, R16	// Se sube valor a la RAM
 	CALL	OVER			// Se resetea el puntero
 	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
+	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
 	LPM		D_DEC_HORA, Z	// Subir valor del puntero a registro
 	RET
 
@@ -271,6 +289,7 @@ SUMA_DIA_1:
 	STS		UNI_DIA, R16	// Se sube valor a la RAM
 	CALL	OVER			// Se resetea el puntero
 	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
+	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
 	LPM		D_UNI_DIA, Z	// Subir valor del puntero a registro
 	RET
 
@@ -286,6 +305,7 @@ SUMA_DIA_2:
 	STS		DEC_DIA, R16	// Se sube valor a la RAM
 	CALL	OVER			// Se resetea el puntero
 	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
+	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
 	LPM		D_DEC_DIA, Z	// Subir valor del puntero a registro
 	RET
 
@@ -301,6 +321,7 @@ SUMA_MES_1:
 	STS		UNI_MES, R16	// Se sube valor a la RAM
 	CALL	OVER			// Se resetea el puntero
 	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
+	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
 	LPM		D_UNI_MES, Z	// Subir valor del puntero a registro
 	RET
 
@@ -315,6 +336,7 @@ SUMA_MES_2:
 	STS		DEC_MES, R16	// Se sube valor a la RAM
 	CALL	OVER			// Se resetea el puntero
 	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
+	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
 	LPM		D_DEC_MES, Z	// Subir valor del puntero a registro
 	RET
 
