@@ -27,6 +27,8 @@ Descripción:
 .def		D_DEC_ALRM = R11
 
 .def		MUX = R22
+.def		MODO = R23
+.def		ESTADO = R24
 
 .dseg
 .org		SRAM_START
@@ -118,9 +120,9 @@ SETUP:
 	LDI		R19, 0x00		// Incrementos del timer
 	LDI		R20, 0x00		// Overflow timer1
 	LDI		R21, 0x00		// Contador timer0
-	LDI		R22, 0x00		// MUX
-	LDI		R23, 0x00		// 
-	LDI		R24, 0x00		// 
+	LDI		R22, 0xF0		// MUX
+	LDI		R23, 0x00		// MODO
+	LDI		R24, 0x00		// ESTADO
 
 	LDI     R16, 0x00
 	STS     UNI_MIN, R16
@@ -158,6 +160,10 @@ MAIN_LOOP:
 	SBRC	R19, 0
 	SBI		PORTD, 7
 
+	SBI		PORTB, 4
+	SBI		PORTB, 5
+	
+	MUX_OUT:
 	OUT		PORTC, MUX
 
 	MODO_HORA1:
@@ -226,7 +232,7 @@ SUMA_MINS_2:
 	BRNE	SM2_JMP			// Se observa si tiene más de 4 bits
 	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
 	STS		UNI_MIN, R16	// Se sube valor a la RAM
-	CALL	SUMA_MINS_2		// En caso de overflow incrementar siguiente unidad
+	CALL	SUMA_HRS_1		// En caso de overflow incrementar siguiente unidad
 	SM2_JMP:
 	STS		DEC_MIN, R16	// Se sube valor a la RAM
 	CALL	OVER			// Se resetea el puntero
@@ -328,8 +334,8 @@ SUMA_MES_1:
 SUMA_MES_2:
 	LDS		R16, DEC_MES	// Se trae el valor de la RAM
 	INC		R16				// Se incrementa el valor
-	CPI		R16, 3
-	BRNE	SME2_JMP			// Se observa si tiene más de 4 bits
+	CPI		R16, 4
+	BRNE	SME2_JMP		// Se observa si tiene más de 4 bits
 	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
 	STS		DEC_MES, R16	// Se sube valor a la RAM
 	SME2_JMP:
@@ -354,20 +360,25 @@ BOTONES:
     PUSH	R18				// Se guarda el registro del SREG
 
 	IN		R17, PINB		// Se ingresa la configuración del PIND
-	CPI		R17, 0x1D		// Se compara para ver si el botón está presionado
-	BRNE	DECREMENTO		// Si no esta preionado termina la interrupción
-	INC		R16				// Si está presionado incrementa
-	SBRC	R16, 4			// Si genera overflow reinicia contador
-	LDI		R16, 0x00
+	PUSH	R17
+	ANDI	R17, 0x0F
+	CAMBIO_MODO:
+	CPI		R17, 0x0D		// Se compara para ver si el botón está presionado
+	BRNE	FINAL	// Si no esta preionado termina la interrupción
+	INC		MODO
+	CPI		MODO, 3
+	BRNE	FINAL
+	LDI		MODO, 0x00
 	JMP		FINAL			// Regreso de la interrupción
-	DECREMENTO:
-	CPI		R17, 0x1E		// Se compara para ver si el botón está presionado
+	/*CAMBIO_ESTADO:
+	CPI		R17, 0x0E		// Se compara para ver si el botón está presionado
 	BRNE	FINAL			// Si no esta preionado termina la interrupción
-	DEC		R16				// Si está presionado decrementa
-	SBRC	R16, 4			// Si genera underflow reinicia contador
-	LDI		R16, 0x0F
-	FINAL: 
+	MOV		R18, MUX
+	LDI		MUX, 0x20
+	ADD		MUX, R18*/
 
+	FINAL: 
+	POP		R17
 	POP		R18				// Se trae el registro del SREG
     OUT		SREG, R18		// Se ingresa el registro del SREG a R18
     POP		R18				// Se trae el registro anterior de R18	
@@ -400,32 +411,49 @@ OVER_TIMER0:
     IN		R17, SREG		// Se ingresa el registro del SREG a R18
     PUSH	R17				// Se guarda el registro del SREG
 
-	LDI		R16, MAX_VAL_0
-	OUT		TCNT0, R16		// Cargar valor inicial en TCNT0
+	LDI		R17, MAX_VAL_0
+	OUT		TCNT0, R17		// Cargar valor inicial en TCNT0
 	INC		R21				// Se incrementa el tiempo del timer
 
-	CLR		MUX
 	CPI		R21, 4
 	BRNE	DISPLAYS
 	CLR		R21
 
+	HORA:
+	CPI		MODO, 0
+	BRNE	FECHA
+	LDI		MUX, 0x10
+	FECHA:
+	CPI		MODO, 1
+	BRNE	ALARMA
+	LDI		MUX, 0x20
+	ALARMA:
+	CPI		MODO, 2
+	BRNE	DISPLAYS
+	LDI		MUX, 0x30
+
 	DISPLAYS:
+	ANDI	MUX, 0xF0 
 	DISPLAY1:
 	CPI		R21, 0
 	BRNE	DISPLAY2
-	LDI		MUX, 0b00001000
+	LDI		R17, 0b00001000
+	ADD		MUX, R17
 	DISPLAY2:
 	CPI		R21, 1
 	BRNE	DISPLAY3
-	LDI		MUX, 0b00000100
+	LDI		R17, 0b00000100
+	ADD		MUX, R17
 	DISPLAY3:
 	CPI		R21, 2
 	BRNE	DISPLAY4
-	LDI		MUX, 0b00000010
+	LDI		R17, 0b00000010
+	ADD		MUX, R17
 	DISPLAY4:
 	CPI		R21, 3
 	BRNE	DISPLAY_END
-	LDI		MUX, 0b00000001
+	LDI		R17, 0b00000001
+	ADD		MUX, R17
 
 	DISPLAY_END:
 	POP		R17				// Se trae el registro del SREG
