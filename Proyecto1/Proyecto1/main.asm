@@ -84,7 +84,7 @@ SETUP:
 
 	// Interrupciones de botones
 	// Habilitamos interrupcionees para el PCIE0
-	LDI		R16, (1 << PCINT1) | (1 << PCINT0)
+	LDI		R16, (1 << PCINT0) | (1 << PCINT1) | (1 << PCINT2) | (1 << PCINT3)
 	STS		PCMSK0, R16
 	// Habilitamos interrupcionees para cualquier cambio logico
 	LDI		R16, (1 << PCIE0)
@@ -160,30 +160,37 @@ MAIN_LOOP:
 	SBRC	R19, 0
 	SBI		PORTD, 7
 
-	SBI		PORTB, 4
-	SBI		PORTB, 5
-	
 	MUX_OUT:
 	OUT		PORTC, MUX
 
-	MODO_HORA1:
-	CPI		R21, 0
-	BRNE	MODO_HORA2
-	OUT		PORTD, D_UNI_MIN
-	MODO_HORA2:
-	CPI		R21, 1
-	BRNE	MODO_HORA3
-	OUT		PORTD, D_DEC_MIN
-	MODO_HORA3:
-	CPI		R21, 2
-	BRNE	MODO_HORA4
-	OUT		PORTD, D_UNI_HORA
-	MODO_HORA4:
-	CPI		R21, 3
+	MODO1:
+	CPI		MODO, 0
+	BRNE	MODO2
+	CALL	MODO_HORA
+	MODO2:
+	CPI		MODO, 1
+	BRNE	MODO3
+	CALL	MODO_FECHA
+	MODO3:
+	CPI		MODO, 2
 	BRNE	MODO_END
-	OUT		PORTD, D_DEC_HORA
-	
+	CALL	MODO_ALARMA
 	MODO_END:
+
+	ESTADO1:
+	CPI		ESTADO, 0
+	BRNE	ESTADO2
+	CALL	MODO_HORA
+	ESTADO2:
+	CPI		ESTADO, 1
+	BRNE	ESTADO3
+	CALL	MODO_FECHA
+	ESTADO3:
+	CPI		ESTADO, 2
+	BRNE	ESTADO_END
+	CALL	MODO_ALARMA
+	ESTADO_END:
+
 	CPI		R19, 2			// Se esperan 200 overflows para hacer un segundo
 	BRNE	MAIN_LOOP		
 
@@ -346,6 +353,66 @@ SUMA_MES_2:
 	LPM		D_DEC_MES, Z	// Subir valor del puntero a registro
 	RET
 
+MODO_HORA:
+	MODO_HORA1:
+	CPI		R21, 0
+	BRNE	MODO_HORA2
+	OUT		PORTD, D_UNI_MIN
+	MODO_HORA2:
+	CPI		R21, 1
+	BRNE	MODO_HORA3
+	OUT		PORTD, D_DEC_MIN
+	MODO_HORA3:
+	CPI		R21, 2
+	BRNE	MODO_HORA4
+	OUT		PORTD, D_UNI_HORA
+	MODO_HORA4:
+	CPI		R21, 3
+	BRNE	MODO_HORA_END
+	OUT		PORTD, D_DEC_HORA
+	MODO_HORA_END:
+	RET
+
+MODO_FECHA:
+	MODO_FECHA1:
+	CPI		R21, 0
+	BRNE	MODO_FECHA2
+	OUT		PORTD, D_UNI_DIA
+	MODO_FECHA2:
+	CPI		R21, 1
+	BRNE	MODO_FECHA3
+	OUT		PORTD, D_DEC_DIA
+	MODO_FECHA3:
+	CPI		R21, 2
+	BRNE	MODO_FECHA4
+	OUT		PORTD, D_UNI_MES
+	MODO_FECHA4:
+	CPI		R21, 3
+	BRNE	MODO_FECHA_END
+	OUT		PORTD, D_DEC_MES
+	MODO_FECHA_END:
+	RET
+
+MODO_ALARMA:
+	MODO_ALARMA1:
+	CPI		R21, 0
+	BRNE	MODO_ALARMA2
+	OUT		PORTD, D_UNI_MIN
+	MODO_ALARMA2:
+	CPI		R21, 1
+	BRNE	MODO_ALARMA3
+	OUT		PORTD, D_DEC_MIN
+	MODO_ALARMA3:
+	CPI		R21, 2
+	BRNE	MODO_ALARMA4
+	OUT		PORTD, D_UNI_HORA
+	MODO_ALARMA4:
+	CPI		R21, 3
+	BRNE	MODO_ALARMA_END
+	OUT		PORTD, D_DEC_HORA
+	MODO_ALARMA_END:
+	RET
+
 OVER:
 	LDI		ZL, LOW(TABLA7SEG << 1)				// Ingresa a Z los registros de la tabla más bajos
 	LDI		ZH, HIGH(TABLA7SEG << 1)			
@@ -364,18 +431,22 @@ BOTONES:
 	ANDI	R17, 0x0F
 	CAMBIO_MODO:
 	CPI		R17, 0x0D		// Se compara para ver si el botón está presionado
-	BRNE	FINAL	// Si no esta preionado termina la interrupción
+	BRNE	CAMBIO_ESTADO	// Si no esta preionado termina la interrupción
 	INC		MODO
 	CPI		MODO, 3
 	BRNE	FINAL
 	LDI		MODO, 0x00
 	JMP		FINAL			// Regreso de la interrupción
-	/*CAMBIO_ESTADO:
+	CAMBIO_ESTADO:
 	CPI		R17, 0x0E		// Se compara para ver si el botón está presionado
-	BRNE	FINAL			// Si no esta preionado termina la interrupción
-	MOV		R18, MUX
-	LDI		MUX, 0x20
-	ADD		MUX, R18*/
+	BRNE	INCREMENTOS		// Si no esta preionado termina la interrupción
+	INC		ESTADO
+	CPI		ESTADO, 3
+	BRNE	FINAL
+	LDI		ESTADO, 0x00
+	JMP		FINAL
+	INCREMENTOS:
+	DECREMENTOS:
 
 	FINAL: 
 	POP		R17
