@@ -26,6 +26,8 @@ Descripción:
 .def		D_UNI_ALRM = R10
 .def		D_DEC_ALRM = R11
 
+.def		MUX = R22
+
 .dseg
 .org		SRAM_START
 UNI_MIN:	.byte	1
@@ -116,7 +118,7 @@ SETUP:
 	LDI		R19, 0x00		// Incrementos del timer
 	LDI		R20, 0x00		// Overflow timer1
 	LDI		R21, 0x00		// Contador timer0
-	LDI		R22, 0x00		// 
+	LDI		R22, 0x00		// MUX
 	LDI		R23, 0x00		// 
 	LDI		R24, 0x00		// 
 
@@ -139,13 +141,34 @@ SETUP:
 MAIN_LOOP:
 	SEI
 
-	OUT		PORTD, R23		// Sale la señal del contador 1
-	OUT		PORTD, R18		// Sale la señal del contador 2
+	SBRC	R19, 0
+	SBI		PORTD, 7
+
+	OUT		PORTC, MUX
+
+	MODO_HORA1:
+	CPI		R21, 0
+	BRNE	MODO_HORA2
+	OUT		PORTD, D_UNI_MIN
+	MODO_HORA2:
+	CPI		R21, 1
+	BRNE	MODO_HORA3
+	OUT		PORTD, D_DEC_MIN
+	MODO_HORA3:
+	CPI		R21, 2
+	BRNE	MODO_HORA4
+	OUT		PORTD, D_UNI_HORA
+	MODO_HORA4:
+	CPI		R21, 3
+	BRNE	MODO_END
+	OUT		PORTD, D_DEC_HORA
 	
-	CPI		R19, 2		// Se esperan 200 overflows para hacer un segundo
+	MODO_END:
+	CPI		R19, 2			// Se esperan 200 overflows para hacer un segundo
 	BRNE	MAIN_LOOP		
 
 	CLR		R19				// Se limpia el registro de R19
+
 	CALL	SUMA_MINS_1		// Se llama el incremento del dislpay
 	JMP		MAIN_LOOP
 
@@ -162,7 +185,7 @@ INIT_TMR1:
 INIT_TMR0:
 	LDI		R16, (1 << CS00) | (1 << CS01) | (0 << CS02)
 	OUT		TCCR0B, R16		// Setear prescaler del TIMER 0 a 64
-	LDI		R16, 178
+	LDI		R16, MAX_VAL_0
 	OUT		TCNT0, R16		// Cargar valor inicial en TCNT0
 	RET
 
@@ -170,7 +193,7 @@ SUMA_MINS_1:				// Función para el incremento del minutos
 	LDS		R16, UNI_MIN	// Se trae el valor de la RAM
 	INC		R16				// Se incrementa el valor
 	CPI		R16, 10
-	BRNE	SM1_JMP			// Se observa si tiene más de 4 bits
+	BRNE	SM1_JMP			
 	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
 	STS		UNI_MIN, R16	// Se sube valor a la RAM
 	CALL	SUMA_MINS_2		// En caso de overflow incrementar siguiente unidad
@@ -355,12 +378,34 @@ OVER_TIMER0:
     IN		R17, SREG		// Se ingresa el registro del SREG a R18
     PUSH	R17				// Se guarda el registro del SREG
 
-	LDI		R17, HIGH(MAX_VAL_1)
-	STS		TCNT1H, R17		// Cargar valor inicial en TCNT1
-	LDI		R17, LOW(MAX_VAL_1)
-	STS		TCNT1L, R17		// Cargar valor inicial en TCNT1
-	INC		R19				// Se incrementa el tiempo del timer
+	LDI		R16, MAX_VAL_0
+	OUT		TCNT0, R16		// Cargar valor inicial en TCNT0
+	INC		R21				// Se incrementa el tiempo del timer
 
+	CLR		MUX
+	CPI		R21, 4
+	BRNE	DISPLAYS
+	CLR		R21
+
+	DISPLAYS:
+	DISPLAY1:
+	CPI		R21, 0
+	BRNE	DISPLAY2
+	LDI		MUX, 0b00001000
+	DISPLAY2:
+	CPI		R21, 1
+	BRNE	DISPLAY3
+	LDI		MUX, 0b00000100
+	DISPLAY3:
+	CPI		R21, 2
+	BRNE	DISPLAY4
+	LDI		MUX, 0b00000010
+	DISPLAY4:
+	CPI		R21, 3
+	BRNE	DISPLAY_END
+	LDI		MUX, 0b00000001
+
+	DISPLAY_END:
 	POP		R17				// Se trae el registro del SREG
     OUT		SREG, R17		// Se ingresa el registro del SREG a R18
     POP		R17				// Se trae el registro anterior de R18	
