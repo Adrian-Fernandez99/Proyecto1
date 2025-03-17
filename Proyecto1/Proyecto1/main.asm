@@ -42,8 +42,10 @@ UNI_DIA:	.byte	1
 DEC_DIA:	.byte	1
 UNI_MES:	.byte	1
 DEC_MES:	.byte	1
-UNI_ALRM:	.byte	1
-DEC_ALRM:	.byte	1
+UNI_MIN_ALRM:	.byte	1
+DEC_MIN_ALRM:	.byte	1
+UNI_HORA_ALRM:	.byte	1
+DEC_HORA_ALRM:	.byte	1
 
 .cseg
 .org		0x0000			// Se dirigen el inicio
@@ -135,8 +137,10 @@ SETUP:
 	STS     DEC_DIA, R16
 	STS     UNI_MES, R16
 	STS     DEC_MES, R16
-	STS     UNI_ALRM, R16
-	STS     DEC_ALRM, R16
+	STS     UNI_MIN_ALRM, R16
+	STS     DEC_MIN_ALRM, R16
+	STS		UNI_HORA_ALRM, R16
+	STS		DEC_HORA_ALRM, R16
 
 	CALL	OVER
 
@@ -210,13 +214,14 @@ INIT_TMR0:
 SUMA_MINS_1:				// Función para el incremento del minutos
 	LDS		R16, UNI_MIN	// Se trae el valor de la RAM
 	INC		R16				// Se incrementa el valor
+	STS		UNI_MIN, R16	// Se sube valor a la RAM
 	CPI		R16, 10
 	BRNE	SM1_JMP			
 	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
 	STS		UNI_MIN, R16	// Se sube valor a la RAM
 	CALL	SUMA_MINS_2		// En caso de overflow incrementar siguiente unidad
 	SM1_JMP:
-	STS		UNI_MIN, R16	// Se sube valor a la RAM
+	LDS		R16, UNI_MIN	// Se sube valor a la RAM
 	CALL	OVER			// Se resetea el puntero
 	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
 	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
@@ -245,7 +250,7 @@ SUMA_HRS_1:
 	INC		R16				// Se incrementa el valor
 	CPI		R17, 2			// Se observa en que decada esta la hora
 	BRNE	NO_NOCHE
-	CPI		R16, 5
+	CPI		R16, 3
 	BRNE	SH1_JMP			// Se observa si tiene más de 4 bits
 	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
 	STS		UNI_HORA, R16	// Se sube valor a la RAM
@@ -404,6 +409,78 @@ MODO_ALARMA:
 	MODO_ALARMA_END:
 	RET
 
+SUMA_MINS_ALRM_1:				// Función para el incremento del minutos
+	LDS		R16, UNI_MIN_ALRM	// Se trae el valor de la RAM
+	INC		R16				// Se incrementa el valor
+	CPI		R16, 10
+	BRNE	SMA1_JMP			
+	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
+	STS		UNI_MIN_ALRM, R16	// Se sube valor a la RAM
+	CALL	SUMA_MINS_ALRM_2		// En caso de overflow incrementar siguiente unidad
+	SMA1_JMP:
+	STS		UNI_MIN_ALRM, R16	// Se sube valor a la RAM
+	CALL	OVER			// Se resetea el puntero
+	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
+	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
+	LPM		D_UNI_MIN_ALRM, Z	// Subir valor del puntero a registro
+	RET
+
+SUMA_MINS_ALRM_2:
+	LDS		R16, DEC_MIN_ALRM	// Se trae el valor de la RAM
+	INC		R16				// Se incrementa el valor
+	CPI		R16, 6
+	BRNE	SMA2_JMP			// Se observa si tiene más de 4 bits
+	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
+	STS		DEC_MIN_ALRM, R16	// Se sube valor a la RAM
+	SMA2_JMP:
+	STS		DEC_MIN_ALRM, R16	// Se sube valor a la RAM
+	CALL	OVER			// Se resetea el puntero
+	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
+	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
+	LPM		D_DEC_MIN_ALRM, Z	// Subir valor del puntero a registro
+	RET
+
+SUMA_HRS_ALRM_1:
+	LDS		R16, UNI_HORA_ALRM	// Se trae el valor de la RAM
+	LDS		R17, DEC_HORA_ALRM	// Se trae el valor de la RAM
+	INC		R16				// Se incrementa el valor
+	CPI		R17, 2			// Se observa en que decada esta la hora
+	BRNE	NO_NOCHE_A
+	CPI		R16, 5
+	BRNE	SHA1_JMP			// Se observa si tiene más de 4 bits
+	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
+	STS		UNI_HORA_ALRM, R16	// Se sube valor a la RAM
+	CALL	SUMA_HRS_ALRM_2		// En caso de overflow incrementar siguiente unidad
+	JMP		SHA1_JMP
+	NO_NOCHE_A:
+	CPI		R16, 10
+	BRNE	SHA1_JMP			// Se observa si tiene más de 4 bits
+	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
+	STS		UNI_HORA_ALRM, R16	// Se sube valor a la RAM
+	CALL	SUMA_HRS_ALRM_2		// En caso de overflow incrementar siguiente unidad
+	SHA1_JMP:
+	STS		UNI_HORA_ALRM, R16	// Se sube valor a la RAM
+	CALL	OVER			// Se resetea el puntero
+	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
+	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
+	LPM		D_UNI_HORA_ALRM, Z	// Subir valor del puntero a registro
+	RET
+
+SUMA_HRS_ALRM_2:
+	LDS		R16, DEC_HORA_ALRM	// Se trae el valor de la RAM
+	INC		R16					// Se incrementa el valor
+	CPI		R16, 3
+	BRNE	SHA2_JMP			// Se observa si tiene más de 4 bits
+	LDI		R16, 0x00			// En caso de overflow y debe regresar a 0
+	STS		DEC_HORA_ALRM, R16	// Se sube valor a la RAM
+	SHA2_JMP:
+	STS		DEC_HORA_ALRM, R16	// Se sube valor a la RAM
+	CALL	OVER				// Se resetea el puntero
+	ADD		ZL, R16				// Se ingresa el registro del contador al puntero
+	ADD		ZH, R1				// Se ingresa el registro del contador al puntero
+	LPM		D_DEC_HORA_ALRM, Z	// Subir valor del puntero a registro
+	RET
+
 OVER:
 	LDI		ZL, LOW(TABLA7SEG << 1)				// Ingresa a Z los registros de la tabla más bajos
 	LDI		ZH, HIGH(TABLA7SEG << 1)			
@@ -423,6 +500,7 @@ BOTONES:
 	CAMBIO_MODO:
 	CPI		R17, 0x0D		// Se compara para ver si el botón está presionado
 	BRNE	CAMBIO_ESTADO	// Si no esta preionado termina la interrupción
+	LDI		ESTADO, 0
 	INC		MODO
 	CPI		MODO, 3
 	BRNE	FINAL
@@ -439,6 +517,11 @@ BOTONES:
 	INCREMENTOS:
 	CPI		R17, 0x0B		// Se compara para ver si el botón está presionado
 	BRNE	DECREMENTOS		// Si no esta preionado termina la interrupción
+	CPI		ESTADO, 0
+	BRNE	D1
+	CPI		MODO, 2
+	BRNE	FINAL
+	SBI		PORTB, 4
 	D1:
 	CPI		ESTADO, 1
 	BRNE	D2
@@ -448,8 +531,11 @@ BOTONES:
 		CALL	SUMA_MINS_1
 		D1_FECHA:
 		CPI		MODO, 1
-		BRNE	FINAL
+		BRNE	D1_ALARMA
 		CALL	SUMA_DIA_1
+		D1_ALARMA:
+		CALL	SUMA_MINS_ALRM_1
+	JMP		FINAL
 	D2:
 	CPI		ESTADO, 2
 	BRNE	FINAL
@@ -459,8 +545,10 @@ BOTONES:
 		CALL	SUMA_HRS_1
 		D2_FECHA:
 		CPI		MODO, 1
-		BRNE	FINAL
+		BRNE	D2_ALARMA
 		CALL	SUMA_MES_1
+		D2_ALARMA: 
+		CALL	SUMA_HRS_ALRM_1
 	JMP		FINAL
 	DECREMENTOS:
 	
