@@ -231,13 +231,14 @@ SUMA_MINS_1:				// Función para el incremento del minutos
 SUMA_MINS_2:
 	LDS		R16, DEC_MIN	// Se trae el valor de la RAM
 	INC		R16				// Se incrementa el valor
+	STS		DEC_MIN, R16	// Se sube valor a la RAM
 	CPI		R16, 6
 	BRNE	SM2_JMP			// Se observa si tiene más de 4 bits
 	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
-	STS		UNI_MIN, R16	// Se sube valor a la RAM
+	STS		DEC_MIN, R16	// Se sube valor a la RAM
 	CALL	SUMA_HRS_1		// En caso de overflow incrementar siguiente unidad
 	SM2_JMP:
-	STS		DEC_MIN, R16	// Se sube valor a la RAM
+	LDS		R16, DEC_MIN	// Se trae el valor de la RAM
 	CALL	OVER			// Se resetea el puntero
 	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
 	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
@@ -248,9 +249,10 @@ SUMA_HRS_1:
 	LDS		R16, UNI_HORA	// Se trae el valor de la RAM
 	LDS		R17, DEC_HORA	// Se trae el valor de la RAM
 	INC		R16				// Se incrementa el valor
+	STS		UNI_HORA, R16	// Se sube valor a la RAM
 	CPI		R17, 2			// Se observa en que decada esta la hora
 	BRNE	NO_NOCHE
-	CPI		R16, 3
+	CPI		R16, 4
 	BRNE	SH1_JMP			// Se observa si tiene más de 4 bits
 	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
 	STS		UNI_HORA, R16	// Se sube valor a la RAM
@@ -263,7 +265,7 @@ SUMA_HRS_1:
 	STS		UNI_HORA, R16	// Se sube valor a la RAM
 	CALL	SUMA_HRS_2		// En caso de overflow incrementar siguiente unidad
 	SH1_JMP:
-	STS		UNI_HORA, R16	// Se sube valor a la RAM
+	LDS		R16, UNI_HORA	// Se trae el valor de la RAM
 	CALL	OVER			// Se resetea el puntero
 	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
 	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
@@ -273,13 +275,14 @@ SUMA_HRS_1:
 SUMA_HRS_2:
 	LDS		R16, DEC_HORA	// Se trae el valor de la RAM
 	INC		R16				// Se incrementa el valor
+	sTS		DEC_HORA, R16	// Se sube valor a la RAM
 	CPI		R16, 3
 	BRNE	SH2_JMP			// Se observa si tiene más de 4 bits
 	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
 	STS		DEC_HORA, R16	// Se sube valor a la RAM
 	CALL	SUMA_DIA_1		// En caso de overflow incrementar siguiente unidad
 	SH2_JMP:
-	STS		DEC_HORA, R16	// Se sube valor a la RAM
+	LDS		R16, DEC_HORA	// Se trae el valor de la RAM
 	CALL	OVER			// Se resetea el puntero
 	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
 	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
@@ -289,13 +292,14 @@ SUMA_HRS_2:
 SUMA_DIA_1:
 	LDS		R16, UNI_DIA	// Se trae el valor de la RAM
 	INC		R16				// Se incrementa el valor
-	CPI		R16, 3
+	STS		UNI_DIA, R16	// Se sube valor a la RAM
+	CPI		R16, 1
 	BRNE	SD1_JMP			// Se observa si tiene más de 4 bits
 	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
 	STS		UNI_DIA, R16	// Se sube valor a la RAM
 	CALL	SUMA_DIA_2		// En caso de overflow incrementar siguiente unidad
 	SD1_JMP:
-	STS		UNI_DIA, R16	// Se sube valor a la RAM
+	LDS		R16, UNI_DIA	// Se trae el valor de la RAM
 	CALL	OVER			// Se resetea el puntero
 	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
 	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
@@ -305,13 +309,14 @@ SUMA_DIA_1:
 SUMA_DIA_2:
 	LDS		R16, DEC_DIA	// Se trae el valor de la RAM
 	INC		R16				// Se incrementa el valor
+	STS		DEC_DIA, R16	// Se sube valor a la RAM
 	CPI		R16, 3
 	BRNE	SD2_JMP			// Se observa si tiene más de 4 bits
 	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
 	STS		DEC_DIA, R16	// Se sube valor a la RAM
 	CALL	SUMA_MES_1		// En caso de overflow incrementar siguiente unidad
 	SD2_JMP:
-	STS		DEC_DIA, R16	// Se sube valor a la RAM
+	LDS		R16, DEC_DIA	// Se trae el valor de la RAM
 	CALL	OVER			// Se resetea el puntero
 	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
 	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
@@ -321,13 +326,14 @@ SUMA_DIA_2:
 SUMA_MES_1:
 	LDS		R16, UNI_MES	// Se trae el valor de la RAM
 	INC		R16				// Se incrementa el valor
-	CPI		R16, 3
+	STS		UNI_MES, R16	// Se sube valor a la RAM
+	CPI		R16, 2
 	BRNE	SME1_JMP			// Se observa si tiene más de 4 bits
 	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
 	STS		UNI_MES, R16	// Se sube valor a la RAM
 	CALL	SUMA_MES_2		// En caso de overflow incrementar siguiente unidad
 	SME1_JMP:
-	STS		UNI_MES, R16	// Se sube valor a la RAM
+	LDS		R16, UNI_MES	// Se trae el valor de la RAM
 	CALL	OVER			// Se resetea el puntero
 	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
 	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
@@ -337,12 +343,13 @@ SUMA_MES_1:
 SUMA_MES_2:
 	LDS		R16, DEC_MES	// Se trae el valor de la RAM
 	INC		R16				// Se incrementa el valor
+	STS		DEC_MES, R16	// Se sube valor a la RAM
 	CPI		R16, 4
 	BRNE	SME2_JMP		// Se observa si tiene más de 4 bits
 	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
 	STS		DEC_MES, R16	// Se sube valor a la RAM
 	SME2_JMP:
-	STS		DEC_MES, R16	// Se sube valor a la RAM
+	LDS		R16, DEC_MES	// Se trae el valor de la RAM
 	CALL	OVER			// Se resetea el puntero
 	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
 	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
@@ -412,13 +419,14 @@ MODO_ALARMA:
 SUMA_MINS_ALRM_1:				// Función para el incremento del minutos
 	LDS		R16, UNI_MIN_ALRM	// Se trae el valor de la RAM
 	INC		R16				// Se incrementa el valor
+	STS		UNI_MIN_ALRM, R16	// Se sube valor a la RAM
 	CPI		R16, 10
 	BRNE	SMA1_JMP			
 	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
 	STS		UNI_MIN_ALRM, R16	// Se sube valor a la RAM
 	CALL	SUMA_MINS_ALRM_2		// En caso de overflow incrementar siguiente unidad
 	SMA1_JMP:
-	STS		UNI_MIN_ALRM, R16	// Se sube valor a la RAM
+	LDS		R16, UNI_MIN_ALRM	// Se trae el valor de la RAM
 	CALL	OVER			// Se resetea el puntero
 	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
 	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
@@ -428,12 +436,13 @@ SUMA_MINS_ALRM_1:				// Función para el incremento del minutos
 SUMA_MINS_ALRM_2:
 	LDS		R16, DEC_MIN_ALRM	// Se trae el valor de la RAM
 	INC		R16				// Se incrementa el valor
+	STS		DEC_MIN_ALRM, R16	// Se sube valor a la RAM
 	CPI		R16, 6
 	BRNE	SMA2_JMP			// Se observa si tiene más de 4 bits
 	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
 	STS		DEC_MIN_ALRM, R16	// Se sube valor a la RAM
 	SMA2_JMP:
-	STS		DEC_MIN_ALRM, R16	// Se sube valor a la RAM
+	LDS		R16, DEC_MIN_ALRM	// Se trae el valor de la RAM
 	CALL	OVER			// Se resetea el puntero
 	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
 	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
@@ -444,6 +453,7 @@ SUMA_HRS_ALRM_1:
 	LDS		R16, UNI_HORA_ALRM	// Se trae el valor de la RAM
 	LDS		R17, DEC_HORA_ALRM	// Se trae el valor de la RAM
 	INC		R16				// Se incrementa el valor
+	STS		UNI_HORA_ALRM, R16	// Se sube valor a la RAM
 	CPI		R17, 2			// Se observa en que decada esta la hora
 	BRNE	NO_NOCHE_A
 	CPI		R16, 5
@@ -459,7 +469,7 @@ SUMA_HRS_ALRM_1:
 	STS		UNI_HORA_ALRM, R16	// Se sube valor a la RAM
 	CALL	SUMA_HRS_ALRM_2		// En caso de overflow incrementar siguiente unidad
 	SHA1_JMP:
-	STS		UNI_HORA_ALRM, R16	// Se sube valor a la RAM
+	LDS		R16, UNI_HORA_ALRM	// Se trae el valor de la RAM
 	CALL	OVER			// Se resetea el puntero
 	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
 	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
@@ -469,12 +479,13 @@ SUMA_HRS_ALRM_1:
 SUMA_HRS_ALRM_2:
 	LDS		R16, DEC_HORA_ALRM	// Se trae el valor de la RAM
 	INC		R16					// Se incrementa el valor
+	STS		DEC_HORA_ALRM, R16	// Se sube valor a la RAM
 	CPI		R16, 3
 	BRNE	SHA2_JMP			// Se observa si tiene más de 4 bits
 	LDI		R16, 0x00			// En caso de overflow y debe regresar a 0
 	STS		DEC_HORA_ALRM, R16	// Se sube valor a la RAM
 	SHA2_JMP:
-	STS		DEC_HORA_ALRM, R16	// Se sube valor a la RAM
+	LDS		R16, DEC_HORA_ALRM	// Se trae el valor de la RAM
 	CALL	OVER				// Se resetea el puntero
 	ADD		ZL, R16				// Se ingresa el registro del contador al puntero
 	ADD		ZH, R1				// Se ingresa el registro del contador al puntero
