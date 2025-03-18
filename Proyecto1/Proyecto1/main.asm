@@ -33,7 +33,6 @@ Descripción:
 .def		ESTADO = R24
 
 .def		NUM_DIAS = R25
-.def		ALRM_STATS = R26
 
 .dseg
 .org		SRAM_START
@@ -295,7 +294,7 @@ SUMA_HRS_1:
 SUMA_HRS_2:
 	LDS		R16, DEC_HORA	// Se trae el valor de la RAM
 	INC		R16				// Se incrementa el valor
-	sTS		DEC_HORA, R16	// Se sube valor a la RAM
+	STS		DEC_HORA, R16	// Se sube valor a la RAM
 	CPI		R16, 3
 	BRNE	SH2_JMP			// Se observa si tiene más de 4 bits
 	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
@@ -500,6 +499,238 @@ ID_MES:
 	ID_FINAL:
 	RET
 
+
+RESTA_MINS_1:				// Función para el DECremento del minutos
+	LDS		R16, UNI_MIN	// Se trae el valor de la RAM
+	DEC		R16				// Se DECrementa el valor
+	STS		UNI_MIN, R16	// Se sube valor a la RAM
+	CPI		R16, 0xFF
+	BRNE	RM1_JMP			
+	LDI		R16, 0x09		// En caso de overflow y debe regresar a 0
+	STS		UNI_MIN, R16	// Se sube valor a la RAM
+	CALL	RESTA_MINS_2		// En caso de overflow DECrementar siguiente unidad
+	RM1_JMP:
+	LDS		R16, UNI_MIN	// Se sube valor a la RAM
+	CALL	OVER			// Se resetea el puntero
+	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
+	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
+	LPM		D_UNI_MIN, Z	// Subir valor del puntero a registro
+	RET
+
+RESTA_MINS_2:
+	LDS		R16, DEC_MIN	// Se trae el valor de la RAM
+	DEC		R16				// Se DECrementa el valor
+	STS		DEC_MIN, R16	// Se sube valor a la RAM
+	CPI		R16, 0xFF
+	BRNE	RM2_JMP			// Se observa si tiene más de 4 bits
+	LDI		R16, 0x05		// En caso de overflow y debe regresar a 0
+	STS		DEC_MIN, R16	// Se sube valor a la RAM
+	RM2_JMP:
+	LDS		R16, DEC_MIN	// Se trae el valor de la RAM
+	CALL	OVER			// Se resetea el puntero
+	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
+	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
+	LPM		D_DEC_MIN, Z	// Subir valor del puntero a registro
+	RET
+
+RESTA_HRS_1:
+	LDS		R16, UNI_HORA	// Se trae el valor de la RAM
+	LDS		R17, DEC_HORA	// Se trae el valor de la RAM
+	DEC		R16				// Se DECrementa el valor
+	STS		UNI_HORA, R16	// Se sube valor a la RAM
+	CPI		R17, 0			// Se observa en que decada esta la hora
+	BRNE	RNO_NOCHE
+	CPI		R16, 0xFF
+	BRNE	RH1_JMP			// Se observa si tiene más de 4 bits
+	LDI		R16, 0x03		// En caso de overflow y debe regresar a 0
+	STS		UNI_HORA, R16	// Se sube valor a la RAM
+	CALL	RESTA_HRS_2		// En caso de overflow DECrementar siguiente unidad
+	JMP		RH1_JMP
+	RNO_NOCHE:
+	CPI		R16, 0xFF
+	BRNE	RH1_JMP			// Se observa si tiene más de 4 bits
+	LDI		R16, 0x09		// En caso de overflow y debe regresar a 0
+	STS		UNI_HORA, R16	// Se sube valor a la RAM
+	CALL	RESTA_HRS_2		// En caso de overflow DECrementar siguiente unidad
+	RH1_JMP:
+	LDS		R16, UNI_HORA	// Se trae el valor de la RAM
+	CALL	OVER			// Se resetea el puntero
+	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
+	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
+	LPM		D_UNI_HORA, Z	// Subir valor del puntero a registro
+	RET
+
+RESTA_HRS_2:
+	LDS		R16, DEC_HORA	// Se trae el valor de la RAM
+	DEC		R16				// Se DECrementa el valor
+	STS		DEC_HORA, R16	// Se sube valor a la RAM
+	CPI		R16, 0xFF
+	BRNE	RH2_JMP			// Se observa si tiene más de 4 bits
+	LDI		R16, 0x02		// En caso de overflow y debe regresar a 0
+	STS		DEC_HORA, R16	// Se sube valor a la RAM
+	RH2_JMP:
+	LDS		R16, DEC_HORA	// Se trae el valor de la RAM
+	CALL	OVER			// Se resetea el puntero
+	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
+	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
+	LPM		D_DEC_HORA, Z	// Subir valor del puntero a registro
+	RET
+
+RESTA_DIA_1:
+	LDS		R16, UNI_DIA	// Se trae el valor de la RAM
+	LDS		R17, DEC_DIA	// Se trae el valor de la RAM
+	DEC		R16				// Se DECrementa el valor
+	STS		UNI_DIA, R16	// Se sube valor a la RAM
+	RFEBRERO:
+	CPI		NUM_DIAS, 0x02
+	BRNE	RNO_31_DIA
+	CPI		R17, 0
+	BRNE	RFEBRERO1			// Se observa si tiene más de 4 bits
+	CPI		R16, 0xFF
+	BRNE	RD1_JMP			// Se observa si tiene más de 4 bits
+	LDI		R16, 0x08		// En caso de overflow y debe regresar a 0
+	STS		UNI_DIA, R16	// Se sube valor a la RAM
+	CALL	RESTA_DIA_2		// En caso de overflow DECrementar siguiente unidad
+	JMP		RD1_JMP
+	RFEBRERO1:
+	CPI		R16, 0xFF
+	BRNE	RD1_JMP			// Se observa si tiene más de 4 bits
+	LDI		R16, 0x09		// En caso de overflow y debe regresar a 0
+	STS		UNI_DIA, R16	// Se sube valor a la RAM
+	CALL	RESTA_DIA_2		// En caso de overflow DECrementar siguiente unidad
+	JMP		RD1_JMP
+	RNO_31_DIA:
+	CPI		NUM_DIAS, 0x01
+	BRNE	RNO_30_DIA
+	CPI		R17, 0
+	BRNE	RNO_31_DIA1			// Se observa si tiene más de 4 bits
+	CPI		R16, 0xFF
+	BRNE	RD1_JMP			// Se observa si tiene más de 4 bits
+	LDI		R16, 0x01		// En caso de overflow y debe regresar a 0
+	STS		UNI_DIA, R16	// Se sube valor a la RAM
+	CALL	RESTA_DIA_2		// En caso de overflow DECrementar siguiente unidad
+	JMP		RD1_JMP
+	RNO_31_DIA1:
+	CPI		R16, 0xFF
+	BRNE	RD1_JMP			// Se observa si tiene más de 4 bits
+	LDI		R16, 0x09		// En caso de overflow y debe regresar a 0
+	STS		UNI_DIA, R16	// Se sube valor a la RAM
+	CALL	RESTA_DIA_2		// En caso de overflow DECrementar siguiente unidad
+	JMP		RD1_JMP
+	RNO_30_DIA:
+	CPI		NUM_DIAS, 0x00
+	BRNE	RD1_JMP
+	CPI		R17, 0
+	BRNE	RNO_30_DIA1			// Se observa si tiene más de 4 bits
+	CPI		R16, 0xFF
+	BRNE	RD1_JMP			// Se observa si tiene más de 4 bits
+	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
+	STS		UNI_DIA, R16	// Se sube valor a la RAM
+	CALL	RESTA_DIA_2		// En caso de overflow DECrementar siguiente unidad
+	JMP		RD1_JMP
+	RNO_30_DIA1:
+	CPI		R16, 0xFF
+	BRNE	RD1_JMP			// Se observa si tiene más de 4 bits
+	LDI		R16, 0x09		// En caso de overflow y debe regresar a 0
+	STS		UNI_DIA, R16	// Se sube valor a la RAM
+	CALL	RESTA_DIA_2		// En caso de overflow DECrementar siguiente unidad
+	RD1_JMP:
+	LDS		R16, UNI_DIA	// Se trae el valor de la RAM
+	CALL	OVER			// Se resetea el puntero
+	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
+	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
+	LPM		D_UNI_DIA, Z	// Subir valor del puntero a registro
+	RET
+
+RESTA_DIA_2:
+	LDS		R16, DEC_DIA	// Se trae el valor de la RAM
+	LDS		R17, UNI_DIA	// Se trae el valor de la RAM
+	DEC		R16				// Se DECrementa el valor
+	STS		DEC_DIA, R16	// Se sube valor a la RAM
+	RDEC_FEBRERO:
+	CPI		NUM_DIAS, 0x02
+	BRNE	RDEC_31
+	CPI		R16, 0xFF
+	BRNE	RD2_JMP			// Se observa si tiene más de 4 bits
+	LDI		R16, 0x02		// En caso de overflow y debe regresar a 0
+	STS		DEC_DIA, R16	// Se sube valor a la RAM
+	JMP		RD2_JMP
+	RDEC_31:
+	CPI		NUM_DIAS, 0x01
+	BRNE	RDEC_30
+	CPI		R16, 0xFF
+	BRNE	RD2_JMP		// Se observa si tiene más de 4 bits
+	LDI		R16, 0x03		// En caso de overflow y debe regresar a 0
+	STS		DEC_DIA, R16	// Se sube valor a la RAM
+	JMP		RD2_JMP
+	RDEC_30:
+	CPI		NUM_DIAS, 0x00
+	BRNE	RD2_JMP
+	CPI		R16, 0xFF
+	BRNE	RD2_JMP		// Se observa si tiene más de 4 bits
+	LDI		R16, 0x03		// En caso de overflow y debe regresar a 0
+	STS		DEC_DIA, R16	// Se sube valor a la RAM
+	RD2_JMP:
+	LDS		R16, DEC_DIA	// Se trae el valor de la RAM
+	CALL	OVER			// Se resetea el puntero
+	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
+	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
+	LPM		D_DEC_DIA, Z	// Subir valor del puntero a registro
+	RET
+
+RESTA_MES_1:
+	CPI		ESTADO, 0
+	BREQ	REDITANDING
+	LDI		R16, 0x00
+	STS		DEC_DIA, R16	// Se sube valor a la RAM
+	STS		UNI_DIA, R16	// Se sube valor a la RAM
+	CALL	OVER			// Se resetea el puntero
+	LPM		D_DEC_DIA, Z	// Subir valor del puntero a registro
+	LPM		D_UNI_DIA, Z	// Subir valor del puntero a registro
+	REDITANDING:
+	LDS		R16, UNI_MES	// Se trae el valor de la RAM
+	LDS		R17, DEC_MES	// Se trae el valor de la RAM
+	DEC		R16				// Se DECrementa el valor
+	STS		UNI_MES, R16	// Se sube valor a la RAM
+	CPI		R17, 0			// Se observa en que decada esta la hora
+	BRNE	RNO_MES
+	CPI		R16, 0x00
+	BRNE	RME1_JMP			// Se observa si tiene más de 4 bits
+	LDI		R16, 0x02		// En caso de overflow y debe regresar a 0
+	STS		UNI_MES, R16	// Se sube valor a la RAM
+	CALL	RESTA_MES_2		// En caso de overflow DECrementar siguiente unidad
+	JMP		RME1_JMP
+	RNO_MES:
+	CPI		R16, 0xFF
+	BRNE	RME1_JMP			// Se observa si tiene más de 4 bits
+	LDI		R16, 0x09		// En caso de overflow y debe regresar a 0
+	STS		UNI_MES, R16	// Se sube valor a la RAM
+	CALL	RESTA_MES_2		// En caso de overflow DECrementar siguiente unidad
+	RME1_JMP:
+	LDS		R16, UNI_MES	// Se trae el valor de la RAM
+	CALL	OVER			// Se resetea el puntero
+	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
+	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
+	LPM		D_UNI_MES, Z	// Subir valor del puntero a registro
+	CALL	ID_MES
+	RET
+
+RESTA_MES_2:
+	LDS		R16, DEC_MES	// Se trae el valor de la RAM
+	DEC		R16				// Se DECrementa el valor
+	STS		DEC_MES, R16	// Se sube valor a la RAM
+	CPI		R16, 0xFF
+	BRNE	RME2_JMP			// Se observa si tiene más de 4 bits
+	LDI		R16, 0x01		// En caso de overflow y debe regresar a 0
+	STS		DEC_MES, R16	// Se sube valor a la RAM
+	RME2_JMP:
+	LDS		R16, DEC_MES	// Se trae el valor de la RAM
+	CALL	OVER			// Se resetea el puntero
+	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
+	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
+	LPM		D_DEC_MES, Z	// Subir valor del puntero a registro
+	RET
+
 MODO_HORA:
 	MODO_HORA1:
 	CPI		R21, 0
@@ -658,7 +889,7 @@ BOTONES:
 	LDI		ESTADO, 0
 	INC		MODO
 	CPI		MODO, 3
-	BRNE	FINAL
+	BRNE	PUENTE_AL_FINAL
 	LDI		MODO, 0x00
 	JMP		FINAL			// Regreso de la interrupción
 	CAMBIO_ESTADO:
@@ -666,8 +897,10 @@ BOTONES:
 	BRNE	INCREMENTOS		// Si no esta preionado termina la interrupción
 	INC		ESTADO
 	CPI		ESTADO, 3
-	BRNE	FINAL
+	BRNE	PUENTE_AL_FINAL
 	LDI		ESTADO, 0x00
+	JMP		FINAL
+	PUENTE_AL_FINAL:
 	JMP		FINAL
 	INCREMENTOS:
 	CPI		R17, 0x0B		// Se compara para ver si el botón está presionado
@@ -675,9 +908,9 @@ BOTONES:
 	CPI		ESTADO, 0
 	BRNE	D1
 	CPI		MODO, 2
-	BRNE	FINAL
+	BRNE	PUENTE_AL_FINAL
 	SBI		PORTB, 4
-	LDI		ALRM_STATS, 0x01
+	LDI		R26, 0x01
 	D1:
 	CPI		ESTADO, 1
 	BRNE	D2
@@ -714,12 +947,43 @@ BOTONES:
 	CPI		R17, 0x07		// Se compara para ver si el botón está presionado
 	BRNE	FINAL			// Si no esta preionado termina la interrupción
 	CPI		ESTADO, 0
-	BRNE	FINAL
+	BRNE	R_D1
 	CPI		MODO, 2
 	BRNE	FINAL
 	CBI		PORTB, 4
-	LDI		ALRM_STATS, 0x00
-
+	LDI		R26, 0x00
+	R_D1:
+	CPI		ESTADO, 1
+	BRNE	R_D2
+	R_D1_HORA:
+	CPI		MODO, 0
+	BRNE	R_D1_FECHA
+	CALL	RESTA_MINS_1
+	R_D1_FECHA:
+	CPI		MODO, 1
+	BRNE	R_D1_ALARMA
+	CALL	RESTA_DIA_1
+	R_D1_ALARMA:
+	CPI		MODO, 2
+	BRNE	FINAL
+	//CALL	RESTA_MINS_ALRM_1
+	JMP		FINAL
+	R_D2:
+	CPI		ESTADO, 2
+	BRNE	FINAL
+	R_D2_HORA:
+	CPI		MODO, 0
+	BRNE	R_D2_FECHA
+	CALL	RESTA_HRS_1
+	R_D2_FECHA:
+	CPI		MODO, 1
+	BRNE	R_D2_ALARMA
+	CALL	RESTA_MES_1
+	R_D2_ALARMA: 
+	CPI		MODO, 2
+	BRNE	FINAL
+	//CALL	RESTA_HRS_ALRM_1
+	JMP		FINAL
 	FINAL: 
 	POP		R17
 	POP		R18				// Se trae el registro del SREG
