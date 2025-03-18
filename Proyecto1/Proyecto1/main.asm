@@ -131,6 +131,7 @@ SETUP:
 	LDI		R24, 0x00		// ESTADO
 	LDI		R25, 0x00		// Número de días
 	LDI		R26, 0x00		// Estado de la alarma
+	LDI		R27, 0x00		// Encender alarma
 
 	LDI     R16, 0x00
 	STS     UNI_MIN, R16
@@ -180,7 +181,15 @@ MAIN_LOOP:
 
 	CPI		R26, 1
 	BRNE	ALRM_DESARMADA
+	CPI		R27, 0
+	BRNE	ALRM_DESARMADA
+	SBI		PORTB, 5
+	JMP		NEXT
 
+	ALRM_DESARMADA:
+	CBI		PORTB, 5
+
+	NEXT:
 	SBRC	R19, 0
 	SBI		PORTD, 7
 
@@ -960,6 +969,12 @@ BOTONES:
     IN		R18, SREG		// Se ingresa el registro del SREG a R18
     PUSH	R18				// Se guarda el registro del SREG
 
+	CPI		R27, 0
+	BRNE	ALRM_OFF
+	INC		R27
+	JMP		FINAL
+
+	ALRM_OFF:
 	PUSH	R17
 	IN		R17, PINB		// Se ingresa la configuración del PIND
 	ANDI	R17, 0x0F
@@ -1084,6 +1099,16 @@ OVER_TIMER1:
 	LDI		R17, LOW(MAX_VAL_1)
 	STS		TCNT1L, R17		// Cargar valor inicial en TCNT1
 	INC		R19				// Se incrementa el tiempo del timer
+
+	CLR		R27
+	CPSE	D_UNI_MIN_ALRM, D_UNI_MIN
+	INC		R27
+	CPSE	D_DEC_MIN_ALRM, D_DEC_MIN
+	INC		R27
+	CPSE	D_UNI_HORA_ALRM, D_UNI_HORA
+	INC		R27
+	CPSE	D_DEC_HORA_ALRM, D_DEC_HORA
+	INC		R27
 
 	POP		R17				// Se trae el registro del SREG
     OUT		SREG, R17		// Se ingresa el registro del SREG a R18
