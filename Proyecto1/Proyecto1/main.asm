@@ -178,6 +178,9 @@ SETUP:
 MAIN_LOOP:
 	SEI
 
+	CPI		R26, 1
+	BRNE	ALRM_DESARMADA
+
 	SBRC	R19, 0
 	SBI		PORTD, 7
 
@@ -867,6 +870,83 @@ SUMA_HRS_ALRM_2:
 	LPM		D_DEC_HORA_ALRM, Z	// Subir valor del puntero a registro
 	RET
 
+
+RESTA_MINS_ALRM_1:				// Función para el incremento del minutos
+	LDS		R16, UNI_MIN_ALRM	// Se trae el valor de la RAM
+	DEC		R16				// Se incrementa el valor
+	STS		UNI_MIN_ALRM, R16	// Se sube valor a la RAM
+	CPI		R16, 0xFF
+	BRNE	RMA1_JMP			
+	LDI		R16, 0x09		// En caso de overflow y debe regresar a 0
+	STS		UNI_MIN_ALRM, R16	// Se sube valor a la RAM
+	CALL	RESTA_MINS_ALRM_2		// En caso de overflow incrementar siguiente unidad
+	RMA1_JMP:
+	LDS		R16, UNI_MIN_ALRM	// Se trae el valor de la RAM
+	CALL	OVER			// Se resetea el puntero
+	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
+	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
+	LPM		D_UNI_MIN_ALRM, Z	// Subir valor del puntero a registro
+	RET
+
+RESTA_MINS_ALRM_2:
+	LDS		R16, DEC_MIN_ALRM	// Se trae el valor de la RAM
+	DEC		R16				// Se incrementa el valor
+	STS		DEC_MIN_ALRM, R16	// Se sube valor a la RAM
+	CPI		R16, 0xFF
+	BRNE	RMA2_JMP			// Se observa si tiene más de 4 bits
+	LDI		R16, 0x05		// En caso de overflow y debe regresar a 0
+	STS		DEC_MIN_ALRM, R16	// Se sube valor a la RAM
+	RMA2_JMP:
+	LDS		R16, DEC_MIN_ALRM	// Se trae el valor de la RAM
+	CALL	OVER			// Se resetea el puntero
+	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
+	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
+	LPM		D_DEC_MIN_ALRM, Z	// Subir valor del puntero a registro
+	RET
+
+RESTA_HRS_ALRM_1:
+	LDS		R16, UNI_HORA_ALRM	// Se trae el valor de la RAM
+	LDS		R17, DEC_HORA_ALRM	// Se trae el valor de la RAM
+	DEC		R16				// Se incrementa el valor
+	STS		UNI_HORA_ALRM, R16	// Se sube valor a la RAM
+	CPI		R17, 0			// Se observa en que decada esta la hora
+	BRNE	R_NO_NOCHE_A
+	CPI		R16, 0xFF
+	BRNE	RHA1_JMP			// Se observa si tiene más de 4 bits
+	LDI		R16, 0x03		// En caso de overflow y debe regresar a 0
+	STS		UNI_HORA_ALRM, R16	// Se sube valor a la RAM
+	CALL	RESTA_HRS_ALRM_2		// En caso de overflow incrementar siguiente unidad
+	JMP		RHA1_JMP
+	R_NO_NOCHE_A:
+	CPI		R16, 0xFF
+	BRNE	RHA1_JMP			// Se observa si tiene más de 4 bits
+	LDI		R16, 0x09		// En caso de overflow y debe regresar a 0
+	STS		UNI_HORA_ALRM, R16	// Se sube valor a la RAM
+	CALL	RESTA_HRS_ALRM_2		// En caso de overflow incrementar siguiente unidad
+	RHA1_JMP:
+	LDS		R16, UNI_HORA_ALRM	// Se trae el valor de la RAM
+	CALL	OVER			// Se resetea el puntero
+	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
+	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
+	LPM		D_UNI_HORA_ALRM, Z	// Subir valor del puntero a registro
+	RET
+
+RESTA_HRS_ALRM_2:
+	LDS		R16, DEC_HORA_ALRM	// Se trae el valor de la RAM
+	DEC		R16					// Se incrementa el valor
+	STS		DEC_HORA_ALRM, R16	// Se sube valor a la RAM
+	CPI		R16, 0xFF
+	BRNE	RHA2_JMP			// Se observa si tiene más de 4 bits
+	LDI		R16, 0x02			// En caso de overflow y debe regresar a 0
+	STS		DEC_HORA_ALRM, R16	// Se sube valor a la RAM
+	RHA2_JMP:
+	LDS		R16, DEC_HORA_ALRM	// Se trae el valor de la RAM
+	CALL	OVER				// Se resetea el puntero
+	ADD		ZL, R16				// Se ingresa el registro del contador al puntero
+	ADD		ZH, R1				// Se ingresa el registro del contador al puntero
+	LPM		D_DEC_HORA_ALRM, Z	// Subir valor del puntero a registro
+	RET
+
 OVER:
 	LDI		ZL, LOW(TABLA7SEG << 1)				// Ingresa a Z los registros de la tabla más bajos
 	LDI		ZH, HIGH(TABLA7SEG << 1)			
@@ -966,7 +1046,7 @@ BOTONES:
 	R_D1_ALARMA:
 	CPI		MODO, 2
 	BRNE	FINAL
-	//CALL	RESTA_MINS_ALRM_1
+	CALL	RESTA_MINS_ALRM_1
 	JMP		FINAL
 	R_D2:
 	CPI		ESTADO, 2
@@ -982,7 +1062,7 @@ BOTONES:
 	R_D2_ALARMA: 
 	CPI		MODO, 2
 	BRNE	FINAL
-	//CALL	RESTA_HRS_ALRM_1
+	CALL	RESTA_HRS_ALRM_1
 	JMP		FINAL
 	FINAL: 
 	POP		R17
