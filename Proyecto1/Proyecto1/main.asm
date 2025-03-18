@@ -33,6 +33,7 @@ Descripción:
 .def		ESTADO = R24
 
 .def		NUM_DIAS = R25
+.def		ALRM_STATS = R26
 
 .dseg
 .org		SRAM_START
@@ -130,6 +131,7 @@ SETUP:
 	LDI		R23, 0x00		// MODO
 	LDI		R24, 0x00		// ESTADO
 	LDI		R25, 0x00		// Número de días
+	LDI		R26, 0x00		// Estado de la alarma
 
 	LDI     R16, 0x00
 	STS     UNI_MIN, R16
@@ -252,6 +254,8 @@ SUMA_MINS_2:
 	BRNE	SM2_JMP			// Se observa si tiene más de 4 bits
 	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
 	STS		DEC_MIN, R16	// Se sube valor a la RAM
+	CPI		ESTADO, 0
+	BRNE	SM2_JMP
 	CALL	SUMA_HRS_1		// En caso de overflow incrementar siguiente unidad
 	SM2_JMP:
 	LDS		R16, DEC_MIN	// Se trae el valor de la RAM
@@ -296,6 +300,8 @@ SUMA_HRS_2:
 	BRNE	SH2_JMP			// Se observa si tiene más de 4 bits
 	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
 	STS		DEC_HORA, R16	// Se sube valor a la RAM
+	CPI		ESTADO, 0
+	BRNE	SH2_JMP
 	CALL	SUMA_DIA_1		// En caso de overflow incrementar siguiente unidad
 	SH2_JMP:
 	LDS		R16, DEC_HORA	// Se trae el valor de la RAM
@@ -383,6 +389,9 @@ SUMA_DIA_2:
 	BRNE	SD2_JMP		// Se observa si tiene más de 4 bits
 	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
 	STS		DEC_DIA, R16	// Se sube valor a la RAM
+	CPI		ESTADO, 0
+	BRNE	SD2_JMP
+	CALL	SUMA_MES_1
 	JMP		SD2_JMP
 	DEC_31:
 	CPI		NUM_DIAS, 0x01
@@ -391,6 +400,9 @@ SUMA_DIA_2:
 	BRNE	SD2_JMP		// Se observa si tiene más de 4 bits
 	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
 	STS		DEC_DIA, R16	// Se sube valor a la RAM
+	CPI		ESTADO, 0
+	BRNE	SD2_JMP
+	CALL	SUMA_MES_1
 	JMP		SD2_JMP
 	DEC_30:
 	CPI		NUM_DIAS, 0x00
@@ -399,6 +411,9 @@ SUMA_DIA_2:
 	BRNE	SD2_JMP		// Se observa si tiene más de 4 bits
 	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
 	STS		DEC_DIA, R16	// Se sube valor a la RAM
+	CPI		ESTADO, 0
+	BRNE	SD2_JMP
+	CALL	SUMA_MES_1
 	SD2_JMP:
 	LDS		R16, DEC_DIA	// Se trae el valor de la RAM
 	CALL	OVER			// Se resetea el puntero
@@ -458,6 +473,31 @@ SUMA_MES_2:
 	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
 	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
 	LPM		D_DEC_MES, Z	// Subir valor del puntero a registro
+	RET
+
+ID_MES:
+	LDS		R16, UNI_MES
+	LDS		R17, DEC_MES
+	SWAP	R17
+	ADD		R17, R16
+	CPI		R17, 0x02
+	BRNE	NO_FEBRERO
+	LDI		NUM_DIAS, 0x02
+	JMP		ID_FINAL
+	NO_FEBRERO:
+	CPI		R17, 0x08
+	BRLO	IMPAR31
+	SBRS	R17, 0
+	LDI		NUM_DIAS, 0x01
+	SBRC	R17, 0
+	LDI		NUM_DIAS, 0x00	
+	JMP		ID_FINAL
+	IMPAR31:
+	SBRS	R17, 0
+	LDI		NUM_DIAS, 0x00
+	SBRC	R17, 0
+	LDI		NUM_DIAS, 0x01
+	ID_FINAL:
 	RET
 
 MODO_HORA:
@@ -596,31 +636,6 @@ SUMA_HRS_ALRM_2:
 	LPM		D_DEC_HORA_ALRM, Z	// Subir valor del puntero a registro
 	RET
 
-ID_MES:
-	LDS		R16, UNI_MES
-	LDS		R17, DEC_MES
-	SWAP	R17
-	ADD		R17, R16
-	CPI		R17, 0x02
-	BRNE	NO_FEBRERO
-	LDI		NUM_DIAS, 0x02
-	JMP		ID_FINAL
-	NO_FEBRERO:
-	CPI		R17, 0x08
-	BRLO	IMPAR31
-	SBRS	R17, 0
-	LDI		NUM_DIAS, 0x01
-	SBRC	R17, 0
-	LDI		NUM_DIAS, 0x00
-	JMP		ID_FINAL
-	IMPAR31:
-	SBRS	R17, 0
-	LDI		NUM_DIAS, 0x00
-	SBRC	R17, 0
-	LDI		NUM_DIAS, 0x01
-	ID_FINAL:
-	RET
-
 OVER:
 	LDI		ZL, LOW(TABLA7SEG << 1)				// Ingresa a Z los registros de la tabla más bajos
 	LDI		ZH, HIGH(TABLA7SEG << 1)			
@@ -662,6 +677,7 @@ BOTONES:
 	CPI		MODO, 2
 	BRNE	FINAL
 	SBI		PORTB, 4
+	LDI		ALRM_STATS, 0x01
 	D1:
 	CPI		ESTADO, 1
 	BRNE	D2
@@ -702,6 +718,7 @@ BOTONES:
 	CPI		MODO, 2
 	BRNE	FINAL
 	CBI		PORTB, 4
+	LDI		ALRM_STATS, 0x00
 
 	FINAL: 
 	POP		R17
