@@ -12,23 +12,23 @@ Descripción:
 
 // Definiciones de registro, constantes y variables
 
-.equ		MAX_VAL_0 = 178
-.equ		MAX_VAL_1 = 3036
-
-.def		D_UNI_MIN  = R2
-.def		D_DEC_MIN  = R3
-.def		D_UNI_HORA = R4
-.def		D_DEC_HORA = R5
-.def		D_UNI_DIA  = R6
-.def		D_DEC_DIA  = R7
-.def		D_UNI_MES  = R8
-.def		D_DEC_MES  = R9
+.equ		MAX_VAL_0 = 178			// Valor normal para el timer 0
+.equ		MAX_VAL_1 = 3036		// Valor normal para el timer 1
+									
+.def		D_UNI_MIN  = R2			// Se definen un registros para mostrar displays
+.def		D_DEC_MIN  = R3		
+.def		D_UNI_HORA = R4		
+.def		D_DEC_HORA = R5		
+.def		D_UNI_DIA  = R6		
+.def		D_DEC_DIA  = R7		
+.def		D_UNI_MES  = R8		
+.def		D_DEC_MES  = R9		
 .def		D_UNI_MIN_ALRM = R10
 .def		D_DEC_MIN_ALRM = R11
 .def		D_UNI_HORA_ALRM = R12
 .def		D_DEC_HORA_ALRM = R13
 
-.def		MUX = R22
+.def		MUX = R22			// Registro 
 .def		MODO = R23
 .def		ESTADO = R24
 
@@ -201,8 +201,10 @@ MAIN_LOOP:
 	CALL	MODO_ALARMA
 	MODO_END:
 
-	CPI		R19, 2			// Se esperan 200 overflows para hacer un segundo
+	CPI		R19, 120			// Se esperan 200 overflows para hacer un segundo
 	BRNE	MAIN_LOOP		
+
+	CALL	REALIZAR_ALARMA
 
 	CLR		R19				// Se limpia el registro de R19
 
@@ -1042,6 +1044,22 @@ VERIFICAR_ALARMA:
 	NO_ALARMA:
 	RET
 
+REALIZAR_ALARMA:
+	LDS		R16, UNI_MIN_ALRM
+	LDS		R17, UNI_MIN
+	SUBI	R16, 1
+	CP		R16, R17
+	BRNE	FINIQUITO
+	CP		D_DEC_MIN_ALRM, D_DEC_MIN
+	BRNE	FINIQUITO
+	CP		D_UNI_HORA_ALRM, D_UNI_HORA
+	BRNE	FINIQUITO
+	CP		D_DEC_HORA_ALRM, D_DEC_HORA
+	BRNE	FINIQUITO
+	LDI		R27, 4
+	FINIQUITO:
+	RET
+
 OVER:
 	LDI		ZL, LOW(TABLA7SEG << 1)				// Ingresa a Z los registros de la tabla más bajos
 	LDI		ZH, HIGH(TABLA7SEG << 1)			
@@ -1133,17 +1151,6 @@ OVER_TIMER1:
 	STS		TCNT1L, R17		// Cargar valor inicial en TCNT1
 	INC		R19				// Se incrementa el tiempo del timer
 
-	CP		D_UNI_MIN_ALRM, D_UNI_MIN
-	BRNE	FINIQUITO
-	CP		D_DEC_MIN_ALRM, D_DEC_MIN
-	BRNE	FINIQUITO
-	CP		D_UNI_HORA_ALRM, D_UNI_HORA
-	BRNE	FINIQUITO
-	CP		D_DEC_HORA_ALRM, D_DEC_HORA
-	BRNE	FINIQUITO
-	LDI		R27, 4
-
-	FINIQUITO:
 	POP		R17				// Se trae el registro del SREG
     OUT		SREG, R17		// Se ingresa el registro del SREG a R18
     POP		R17				// Se trae el registro anterior de R18	
