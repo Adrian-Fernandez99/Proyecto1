@@ -178,7 +178,7 @@ SETUP:
 // Main loop
 MAIN_LOOP:
 	SEI
-
+		
 	CALL	VERIFICAR_ALARMA
 
 	SBRC	R19, 0
@@ -256,8 +256,11 @@ SUMA_MINS_2:
 	BRNE	SM2_JMP			// Se observa si tiene más de 4 bits
 	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
 	STS		DEC_MIN, R16	// Se sube valor a la RAM
+	CPI		MODO, 0
+	BRNE	PLUS1
 	CPI		ESTADO, 0
 	BRNE	SM2_JMP
+	PLUS1:
 	CALL	SUMA_HRS_1		// En caso de overflow incrementar siguiente unidad
 	SM2_JMP:
 	LDS		R16, DEC_MIN	// Se trae el valor de la RAM
@@ -302,8 +305,11 @@ SUMA_HRS_2:
 	BRNE	SH2_JMP			// Se observa si tiene más de 4 bits
 	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
 	STS		DEC_HORA, R16	// Se sube valor a la RAM
+	CPI		MODO, 0
+	BRNE	PLUS2
 	CPI		ESTADO, 0
 	BRNE	SH2_JMP
+	PLUS2:
 	CALL	SUMA_DIA_1		// En caso de overflow incrementar siguiente unidad
 	SH2_JMP:
 	LDS		R16, DEC_HORA	// Se trae el valor de la RAM
@@ -391,10 +397,10 @@ SUMA_DIA_2:
 	BRNE	SD2_JMP		// Se observa si tiene más de 4 bits
 	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
 	STS		DEC_DIA, R16	// Se sube valor a la RAM
+	CPI		MODO, 1
+	BRNE	PLUS3
 	CPI		ESTADO, 0
 	BRNE	SD2_JMP
-	CALL	SUMA_MES_1
-	JMP		SD2_JMP
 	DEC_31:
 	CPI		NUM_DIAS, 0x01
 	BRNE	DEC_30
@@ -402,10 +408,10 @@ SUMA_DIA_2:
 	BRNE	SD2_JMP		// Se observa si tiene más de 4 bits
 	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
 	STS		DEC_DIA, R16	// Se sube valor a la RAM
+	CPI		MODO, 1
+	BRNE	PLUS3
 	CPI		ESTADO, 0
 	BRNE	SD2_JMP
-	CALL	SUMA_MES_1
-	JMP		SD2_JMP
 	DEC_30:
 	CPI		NUM_DIAS, 0x00
 	BRNE	SD2_JMP
@@ -413,8 +419,11 @@ SUMA_DIA_2:
 	BRNE	SD2_JMP		// Se observa si tiene más de 4 bits
 	LDI		R16, 0x00		// En caso de overflow y debe regresar a 0
 	STS		DEC_DIA, R16	// Se sube valor a la RAM
+	CPI		MODO, 1
+	BRNE	PLUS3
 	CPI		ESTADO, 0
 	BRNE	SD2_JMP
+	PLUS3:
 	CALL	SUMA_MES_1
 	SD2_JMP:
 	LDS		R16, DEC_DIA	// Se trae el valor de la RAM
@@ -427,12 +436,16 @@ SUMA_DIA_2:
 SUMA_MES_1:
 	CPI		ESTADO, 0
 	BREQ	EDITANDING
-	LDI		R16, 0x00
-	STS		DEC_DIA, R16	// Se sube valor a la RAM
+	LDI		R16, 0x01
 	STS		UNI_DIA, R16	// Se sube valor a la RAM
 	CALL	OVER			// Se resetea el puntero
-	LPM		D_DEC_DIA, Z	// Subir valor del puntero a registro
+	ADD		ZL, R16			// Se ingresa el registro del contador al puntero
+	ADD		ZH, R1			// Se ingresa el registro del contador al puntero
 	LPM		D_UNI_DIA, Z	// Subir valor del puntero a registro
+	LDI		R16, 0x00
+	STS		DEC_DIA, R16	// Se sube valor a la RAM
+	CALL	OVER			// Se resetea el puntero
+	LPM		D_DEC_DIA, Z	// Subir valor del puntero a registro
 	EDITANDING:
 	LDS		R16, UNI_MES	// Se trae el valor de la RAM
 	LDS		R17, DEC_MES	// Se trae el valor de la RAM
@@ -1015,7 +1028,7 @@ R_D1:
 	FINAL_R_D1:
 	RET
 
-VERIFICAR_ALARMA
+VERIFICAR_ALARMA:
 	CPI		ESTADO, 0
 	BRNE	NO_ALARMA
 	CPI		R26, 1
@@ -1024,10 +1037,8 @@ VERIFICAR_ALARMA
 	BREQ	ENCENDER_ALARMA
 	CBI		PORTB, 5
 	JMP		NO_ALARMA
-
 	ENCENDER_ALARMA:
 	SBI		PORTB, 5
-
 	NO_ALARMA:
 	RET
 
@@ -1044,6 +1055,17 @@ BOTONES:
     IN		R18, SREG		// Se ingresa el registro del SREG a R18
     PUSH	R18				// Se guarda el registro del SREG
 
+	CPI		R27, 4
+	BRNE	ALRM_NO_ENCENDIDA
+	PUSH	R17
+	LDI		R18, 0x0F
+	IN		R17, PINB		// Se ingresa la configuración del PIND
+	ANDI	R17, 0x0F
+	CPSE	R17, R18
+	LDI		R27, 0
+	JMP		FINAL
+
+	ALRM_NO_ENCENDIDA:
 	PUSH	R17
 	IN		R17, PINB		// Se ingresa la configuración del PIND
 	ANDI	R17, 0x0F
@@ -1111,18 +1133,17 @@ OVER_TIMER1:
 	STS		TCNT1L, R17		// Cargar valor inicial en TCNT1
 	INC		R19				// Se incrementa el tiempo del timer
 
-	CPSE	D_UNI_MIN_ALRM, D_UNI_MIN
-	INC		R27
-	CPSE	D_DEC_MIN_ALRM, D_DEC_MIN
-	INC		R27
-	CPSE	D_UNI_HORA_ALRM, D_UNI_HORA
-	INC		R27
-	CPSE	D_DEC_HORA_ALRM, D_DEC_HORA
-	INC		R27
-	LDI		R17, 0x04
-	CPSE	R17, R27
-	LDI		R27, 0x00
+	CP		D_UNI_MIN_ALRM, D_UNI_MIN
+	BRNE	FINIQUITO
+	CP		D_DEC_MIN_ALRM, D_DEC_MIN
+	BRNE	FINIQUITO
+	CP		D_UNI_HORA_ALRM, D_UNI_HORA
+	BRNE	FINIQUITO
+	CP		D_DEC_HORA_ALRM, D_DEC_HORA
+	BRNE	FINIQUITO
+	LDI		R27, 4
 
+	FINIQUITO:
 	POP		R17				// Se trae el registro del SREG
     OUT		SREG, R17		// Se ingresa el registro del SREG a R18
     POP		R17				// Se trae el registro anterior de R18	
